@@ -12,6 +12,7 @@ Getestet ist der Code mit einem simulierten Home-Assistant-Objekt. Der visuelle 
 
 - Gehäuse für drei Bauformen: Go / Home (weiß), Flex Home (hell), Flex Pro (anthrazit)
 - Animierter LED-Ring, siehe Abschnitt „LED-Verhalten“
+- Die Symbole an der Karte sind Tasten für den Lademodus. Der aktive Modus leuchtet über dem Symbol.
 - Visueller Editor in Home Assistant mit Auswahlfeldern
 - Findet die Entitäten der Integration automatisch
 - Zusatzinformationen sind standardmäßig aus und im Editor einzeln zuschaltbar:
@@ -143,6 +144,12 @@ Ob die Entität auch dann einen Wert zeigt, wenn ein Chip nur vorgehalten wird u
 - **LED-Farben:** Die Farben stammen aus einer Zusammenfassung des Handbuchs. Eine zweite Quelle habe ich nicht gefunden.
 - **Leistungseinheit:** Die Karte rechnet Watt in Kilowatt um, wenn die Entität die Einheit W angibt. Die README der Integration weist darauf hin, dass die Skalierung möglicherweise abweicht. Bitte mit der Wattpilot-App vergleichen.
 - **Gerätetest:** Die Karte ist nicht am echten Wattpilot getestet.
+
+## Tasten an der Karte
+
+- Blitz: Standard, Blatt: Eco, Uhr: Next Trip. Die Zuordnung ist eine Annahme, weil das Handbuch die Symbole nicht beschreibt.
+- Beim Go / Home-Modell ist auf dem Foto nur Blatt und Uhr zu sehen. Die Taste links am Gehäuse ist nicht belegt, ihre Funktion ist nicht bekannt.
+- Das Handbuch beschreibt: Die Anzeige über dem aktiven Modus leuchtet weiß, bei Eco und Next Trip blinkt sie. Der Blinktakt ist eine Annahme.
 
 ## Hinweis zur Steuerung
 

@@ -416,6 +416,11 @@ class FroniusCardByLutarym extends HTMLElement {
         input[type="range"] { width: 100%; accent-color: var(--accent); min-width: 0; }
         output { font-variant-numeric: tabular-nums; font-weight: 650; min-width: 44px; text-align: right; }
         .msg { color: var(--sub); font-size: 11px; }
+        .mode-btn { cursor: pointer; }
+        .mode-btn.off { cursor: default; opacity: .5; }
+        .mode-btn:focus { outline: none; }
+        .mode-btn:focus-visible .ring { stroke: #4d9bff; }
+        .mode-btn.active .ring { stroke: #4d9bff; stroke-width: 1.6; }
       </style>
       <div class="card" part="card">
         <div class="device">${shape}</div>
@@ -471,6 +476,18 @@ class FroniusCardByLutarym extends HTMLElement {
     });
 
     this._ledEls = Array.from(this.shadowRoot.getElementById('led')?.children || []);
+    this._modeBtns = Array.from(this.shadowRoot.querySelectorAll('.mode-btn'));
+    const press = (btn) => {
+      const id = this._ent(KEYS.mode);
+      if (!id || !this._hass) return;
+      this._hass.callService('select', 'select_option', { entity_id: id, option: btn.dataset.opt });
+    };
+    this._modeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => press(btn));
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(btn); }
+      });
+    });
     this._built = true;
   }
 
@@ -498,8 +515,8 @@ class FroniusCardByLutarym extends HTMLElement {
       <text x="100" y="64.5" text-anchor="middle" font-size="12" font-style="italic" font-weight="700" fill="#ffffff" font-family="system-ui, sans-serif">Fronius</text>
       <g transform="translate(100 102)" fill="none" stroke="#3a3f47" stroke-width="1.6" stroke-linecap="round"><circle r="2"/><path d="M-6 -4 Q-8 0 -6 4"/><path d="M6 -4 Q8 0 6 4"/><path d="M-10 -8 Q-14 0 -10 8"/><path d="M10 -8 Q14 0 10 8"/></g>
       <circle cx="31" cy="165" r="16" fill="url(#hBtn)"/>
-      <g transform="translate(98 156)" fill="none" stroke="#3a3f47" stroke-width="1.1"><path d="M-4 3 C-5 -2 -1 -5 4 -5 C4 0 1 4 -4 3 Z M-4 3 L1 -1"/></g>
-      <g transform="translate(114 156)" fill="none" stroke="#3a3f47" stroke-width="1.1"><circle r="4.5"/><path d="M0 -2.5 V0 L2 1.2"/></g>
+      <g class="mode-btn" data-opt="eco" role="button" tabindex="0" aria-label="Eco" transform="translate(98 156)"><circle r="9" fill="transparent"/><path d="M-4 3 C-5 -2 -1 -5 4 -5 C4 0 1 4 -4 3 Z M-4 3 L1 -1" fill="none" stroke="#3a3f47" stroke-width="1.1"/><circle class="ind" cy="-10" r="1.6" fill="#ffffff" stroke="#3a3f47" stroke-width=".4" opacity="0"/></g>
+      <g class="mode-btn" data-opt="nexttrip" role="button" tabindex="0" aria-label="Next Trip" transform="translate(114 156)"><circle r="9" fill="transparent"/><circle r="4.5" fill="none" stroke="#3a3f47" stroke-width="1.1"/><path d="M0 -2.5 V0 L2 1.2" fill="none" stroke="#3a3f47" stroke-width="1.1"/><circle class="ind" cy="-10" r="1.6" fill="#ffffff" stroke="#3a3f47" stroke-width=".4" opacity="0"/></g>
       <text x="133" y="160" font-size="12" font-weight="700" fill="#2a2f37" font-family="system-ui, sans-serif">Wattpilot</text>
       <circle cx="98" cy="238" r="68" fill="#15181d"/>
       <circle cx="98" cy="238" r="58" fill="url(#hSock)"/>
@@ -534,9 +551,9 @@ class FroniusCardByLutarym extends HTMLElement {
       <circle cx="100" cy="206" r="62" fill="url(#fFace)"/>
       <g id="led" filter="url(#fGlow)">${segs.join('')}</g>
       <g transform="translate(100 176) scale(.9)" fill="none" stroke="${P.txt}" stroke-width="1.6" stroke-linecap="round"><circle r="2"/><path d="M-6 -4 Q-8 0 -6 4"/><path d="M6 -4 Q8 0 6 4"/><path d="M-10 -8 Q-14 0 -10 8"/><path d="M10 -8 Q14 0 10 8"/></g>
-      <g transform="translate(78 210)"><circle r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><path d="M1 -5 L-3 1 H0 L-1 5 L3 -1 H0 Z" fill="${P.txt}"/></g>
-      <g transform="translate(100 210)"><circle r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><path d="M-4 3 C-5 -2 -1 -5 4 -5 C4 0 1 4 -4 3 Z M-4 3 L1 -1" fill="none" stroke="${P.txt}" stroke-width="1.1" stroke-linejoin="round"/></g>
-      <g transform="translate(122 210)"><circle r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><circle r="4" fill="none" stroke="${P.txt}" stroke-width="1"/><path d="M0 -2.5 V0 L2 1.2" fill="none" stroke="${P.txt}" stroke-width="1" stroke-linecap="round"/></g>
+      <g class="mode-btn" data-opt="standard" role="button" tabindex="0" aria-label="Standard" transform="translate(78 210)"><circle r="11" fill="transparent"/><circle class="ring" r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><path d="M1 -5 L-3 1 H0 L-1 5 L3 -1 H0 Z" fill="${P.txt}"/><circle class="ind" cy="-14" r="1.8" fill="#ffffff" stroke="#3a3f47" stroke-width=".4" opacity="0"/></g>
+      <g class="mode-btn" data-opt="eco" role="button" tabindex="0" aria-label="Eco" transform="translate(100 210)"><circle r="11" fill="transparent"/><circle class="ring" r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><path d="M-4 3 C-5 -2 -1 -5 4 -5 C4 0 1 4 -4 3 Z M-4 3 L1 -1" fill="none" stroke="${P.txt}" stroke-width="1.1" stroke-linejoin="round"/><circle class="ind" cy="-14" r="1.8" fill="#ffffff" stroke="#3a3f47" stroke-width=".4" opacity="0"/></g>
+      <g class="mode-btn" data-opt="nexttrip" role="button" tabindex="0" aria-label="Next Trip" transform="translate(122 210)"><circle r="11" fill="transparent"/><circle class="ring" r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><circle r="4" fill="none" stroke="${P.txt}" stroke-width="1"/><path d="M0 -2.5 V0 L2 1.2" fill="none" stroke="${P.txt}" stroke-width="1" stroke-linecap="round"/><circle class="ind" cy="-14" r="1.8" fill="#ffffff" stroke="#3a3f47" stroke-width=".4" opacity="0"/></g>
       <text id="disp" x="121" y="243" text-anchor="middle" font-size="16" font-weight="700" fill="${P.txt}" font-family="ui-monospace, Menlo, Consolas, monospace">-</text>
       <text x="94" y="252" font-size="5" fill="${P.sub}" font-family="system-ui, sans-serif">Session kWh</text>
       <text x="94" y="257" font-size="5" fill="${P.sub}" font-family="system-ui, sans-serif">Total kWh</text>
@@ -617,6 +634,14 @@ class FroniusCardByLutarym extends HTMLElement {
       els.modeRow.hidden = true;
     }
 
+    const hasMode = !!this._ent(KEYS.mode);
+    (this._modeBtns || []).forEach((btn) => {
+      const active = btn.dataset.opt === r.mode;
+      btn.classList.toggle('active', active);
+      btn.classList.toggle('off', !hasMode);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
     els.discoverMsg.textContent = this._discoverMsg || '';
   }
 
@@ -647,6 +672,16 @@ class FroniusCardByLutarym extends HTMLElement {
     const chargeColor = pvCharging ? COLORS.yellow : (LED_SOURCE_COLOR[this._config.led_source] || COLORS.yellow);
     const flashOn = Math.floor(now / FLASH_MS) % 2 === 0;
     const runPos = (now / 1000 * CHASE_PER_SEC) % n;
+
+    const modeBlinkOn = Math.floor(now / FLASH_MS) % 2 === 0;
+    (this._modeBtns || []).forEach((btn) => {
+      const ind = btn.querySelector('.ind');
+      if (!ind) return;
+      const active = btn.dataset.opt === r.mode;
+      let op = 0;
+      if (active) op = btn.dataset.opt === 'standard' ? 1 : (modeBlinkOn ? 1 : 0.15);
+      ind.setAttribute('opacity', String(op));
+    });
 
     this._ledEls.forEach((e, i) => {
       let c;

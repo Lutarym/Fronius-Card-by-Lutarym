@@ -7,6 +7,8 @@
 - Neu: Visueller Editor in Home Assistant mit Modellauswahl und Schaltern für Status, Werte, RFID-Chip und Regler.
 - Neu: Entitäten lassen sich im Editor manuell angeben.
 - Die Karte heißt jetzt Fronius-Card-by-Lutarym (Kartentyp `custom:fronius-card-by-lutarym`).
+- Die Symbole an der Karte sind Tasten für den Lademodus. Der aktive Modus zeigt eine Leuchtanzeige über dem Symbol. Standard leuchtet, Eco und Next Trip blinken.
+- Die Zuordnung Blitz zu Standard, Blatt zu Eco und Uhr zu Next Trip ist eine Annahme.
 - Die Version steht im Editor unter dem Feld „Name“, nicht mehr in der Karte.
 
 ## 0.2.0
