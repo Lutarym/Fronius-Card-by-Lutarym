@@ -1,10 +1,10 @@
 /*
  * Fronius-Card-by-Lutarym
  * Lovelace-Karte für den Fronius Wattpilot (Integration: fronius_wattpilot_lutarym)
- * Version: 0.2.0
+ * Version: 0.3.0
  * Lizenz: MIT
  */
-const CARD_VERSION = '0.2.0';
+const CARD_VERSION = '0.3.0';
 const CARD_TAG = 'fronius-card-by-lutarym';
 const INTEGRATION_DOMAIN = 'fronius_wattpilot_lutarym';
 
@@ -67,8 +67,12 @@ const ERR_LABEL = {
   overtemp: 'Übertemperatur', nocomm: 'Keine Kommunikation', statuslockstuckopen: 'Verriegelung klemmt offen',
   statuslockstucklocked: 'Verriegelung klemmt geschlossen',
 };
-const LED_SOURCE_COLOR ={ pv: COLORS.yellow, battery: COLORS.green, grid: COLORS.white };
-const LED_SOURCE_LABEL = { pv: 'PV-Überschuss', battery: 'Hausspeicher', grid: 'Netz' };
+const LED_SOURCE_COLOR = { pv: COLORS.yellow, battery: COLORS.green, grid: COLORS.white };
+const LED_SOURCE_OPTIONS = [
+  { value: 'pv', label: 'Gelb (PV-Überschuss)' },
+  { value: 'battery', label: 'Grün (Hausspeicher)' },
+  { value: 'grid', label: 'Weiß (Netz)' },
+];
 
 // Zeitwerte der Animation. Im Handbuch nicht angegeben, daher Annahmen.
 const RAINBOW_MS = 3000;
@@ -77,19 +81,19 @@ const CHASE_PER_SEC = 6;
 
 // Schlüssel der Integration, die die Karte braucht
 const KEYS = {
-  amp: 'amp',               // Ladestrom (number)
-  power: 'nrg_ptotal',      // Ladeleistung (sensor, W)
-  car: 'car',               // Fahrzeugstatus (sensor, Schlüssel)
-  session: 'wh',            // Energie seit Start/Anstecken (sensor, Wh)
-  total: 'eto',             // Gesamtenergie (sensor, Wh)
-  error: 'err',             // Fehlerstatus (sensor, Schlüssel)
-  mode: 'lmo',              // Lademodus (select)
-  modelStatus: 'modelStatus', // Grund für Laden/Nicht-Laden (sensor, Schlüssel)
-  trx: 'trx',               // Aktive Transaktion, 0 = keine Karte (number)
-  cards: 'cards',           // Registrierte Karten, Liste in den Attributen (sensor)
+  amp: 'amp',
+  power: 'nrg_ptotal',
+  car: 'car',
+  session: 'wh',
+  total: 'eto',
+  error: 'err',
+  mode: 'lmo',
+  modelStatus: 'modelStatus',
+  trx: 'trx',
+  cards: 'cards',
 };
 
-// Namen der optionalen manuellen Konfiguration je Schlüssel
+// Namen der optionalen manuellen Entitäten in der Konfiguration
 const CONFIG_NAME = {
   amp: 'charging_current',
   power: 'power',
@@ -103,13 +107,40 @@ const CONFIG_NAME = {
   cards: 'cards',
 };
 
+const ENTITY_FIELDS = [
+  'charging_current', 'power', 'car', 'model_status', 'session_energy', 'total_energy',
+  'error', 'mode', 'active_card', 'cards',
+];
+
+const FIELD_LABEL = {
+  name: 'Name',
+  model: 'Modell',
+  max_current: 'Höchstwert Ladestrom (A)',
+  led_source: 'LED-Farbe beim Laden ohne PV-Überschuss',
+  serial: 'Seriennummer (nur bei mehreren Wattpilot)',
+  show_status: 'Status anzeigen',
+  show_values: 'Werte anzeigen',
+  show_chip: 'RFID-Chip anzeigen',
+  show_controls: 'Regler anzeigen',
+  charging_current: 'Ladestrom (Entität)',
+  power: 'Ladeleistung (Entität)',
+  car: 'Fahrzeugstatus (Entität)',
+  model_status: 'Grund des Geräts (Entität)',
+  session_energy: 'Energie seit Anstecken (Entität)',
+  total_energy: 'Gesamtenergie (Entität)',
+  error: 'Fehlerstatus (Entität)',
+  mode: 'Lademodus (Entität)',
+  active_card: 'Aktive Transaktion (Entität)',
+  cards: 'Registrierte RFID-Karten (Entität)',
+};
+
 function escapeHtml(text) {
   return String(text ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
 }
 
-class FroniusWattpilotCard extends HTMLElement {
+class FroniusCardByLutarym extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -118,10 +149,11 @@ class FroniusWattpilotCard extends HTMLElement {
     this._built = false;
     this._raf = null;
     this._ledEls = [];
+    this._offColor = '#2e333b';
     this._startAt = performance.now();
     this._loop = this._loop.bind(this);
     this._pendingAmp = null;
-    this._entityMap = null;      // Schlüssel -> Entitäts-ID, aus der Registry gefunden
+    this._entityMap = null;
     this._discovering = false;
     this._discovered = false;
     this._discoverMsg = '';
@@ -138,6 +170,10 @@ class FroniusWattpilotCard extends HTMLElement {
       max_current: 16,
       led_source: 'pv',
       serial: null,
+      show_status: false,
+      show_values: false,
+      show_chip: false,
+      show_controls: false,
     }, config);
     if (!MODELS[this._config.model]) {
       throw new Error('Unbekanntes Modell: ' + this._config.model + ' (erlaubt: ' + Object.keys(MODELS).join(', ') + ')');
@@ -154,11 +190,58 @@ class FroniusWattpilotCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 7;
+    const c = this._config || {};
+    let n = 4;
+    if (c.show_status) n += 1;
+    if (c.show_values) n += 2;
+    if (c.show_chip) n += 1;
+    if (c.show_controls) n += 2;
+    return n;
   }
 
   static getStubConfig() {
     return { name: 'Wattpilot', model: 'flex-home', max_current: 16, led_source: 'pv' };
+  }
+
+  // Visueller Editor in Home Assistant
+  static getConfigForm() {
+    const entityFields = ENTITY_FIELDS.map((name) => ({ name, selector: { entity: {} } }));
+    return {
+      schema: [
+        { name: 'name', selector: { text: {} } },
+        {
+          name: 'model',
+          required: true,
+          selector: { select: { options: Object.entries(MODELS).map(([value, label]) => ({ value, label })) } },
+        },
+        { name: 'max_current', selector: { number: { min: 6, max: 32, step: 1, mode: 'box' } } },
+        { name: 'led_source', selector: { select: { options: LED_SOURCE_OPTIONS } } },
+        { name: 'serial', selector: { text: {} } },
+        {
+          type: 'expandable',
+          title: 'Zusatzinformationen anzeigen',
+          name: '',
+          flatten: true,
+          schema: [
+            { name: 'show_status', selector: { boolean: {} } },
+            { name: 'show_values', selector: { boolean: {} } },
+            { name: 'show_chip', selector: { boolean: {} } },
+            { name: 'show_controls', selector: { boolean: {} } },
+          ],
+        },
+        {
+          type: 'expandable',
+          title: 'Entitäten manuell angeben (optional)',
+          name: '',
+          flatten: true,
+          schema: entityFields,
+        },
+      ],
+      computeLabel: (field) => FIELD_LABEL[field.name],
+      assertConfig: (config) => {
+        if (config.model && !MODELS[config.model]) throw new Error('Unbekanntes Modell');
+      },
+    };
   }
 
   connectedCallback() {
@@ -172,9 +255,7 @@ class FroniusWattpilotCard extends HTMLElement {
 
   // ---------- Entitäten finden ----------
 
-  // Liest die Entitäts-Registry und ordnet jede Entität über ihre eindeutige Kennung
-  // ("<Seriennummer>_<Schlüssel>") dem Schlüssel der Integration zu. Das funktioniert
-  // unabhängig von der Sprache der Instanz.
+  // Liest die Entitäts-Registry. Die eindeutige Kennung hat die Form "<Seriennummer>_<Schlüssel>".
   async _discover() {
     this._discovering = true;
     try {
@@ -199,7 +280,7 @@ class FroniusWattpilotCard extends HTMLElement {
         }
       }
     } catch (e) {
-      this._discoverMsg = 'Entitäten konnten nicht automatisch gefunden werden (' + (e?.message || e) + '). Bitte die IDs in der Konfiguration eintragen.';
+      this._discoverMsg = 'Entitäten konnten nicht automatisch gefunden werden (' + (e?.message || e) + '). Bitte die IDs im Editor unter "Entitäten manuell angeben" eintragen.';
     } finally {
       this._discovered = true;
       this._discovering = false;
@@ -207,7 +288,7 @@ class FroniusWattpilotCard extends HTMLElement {
     }
   }
 
-  // Entitäts-ID eines Schlüssels: zuerst die manuelle Konfiguration, dann die automatische Erkennung
+  // Manuelle Entität hat Vorrang, sonst die automatisch gefundene
   _ent(key) {
     const override = this._config ? this._config[CONFIG_NAME[key]] : null;
     if (override) return override;
@@ -236,8 +317,7 @@ class FroniusWattpilotCard extends HTMLElement {
     const powerS = this._state(this._ent(KEYS.power));
     let powerKw = powerS ? parseFloat(powerS.state) : NaN;
     if (Number.isFinite(powerKw)) {
-      const unit = powerS.attributes?.unit_of_measurement;
-      powerKw = unit === 'W' ? powerKw / 1000 : powerKw;
+      powerKw = powerS.attributes?.unit_of_measurement === 'W' ? powerKw / 1000 : powerKw;
     } else {
       powerKw = null;
     }
@@ -291,102 +371,93 @@ class FroniusWattpilotCard extends HTMLElement {
     if (this._built || !this._config) return;
     const c = this._config;
     const shape = c.model === 'home' ? this._homeShape() : this._flexShape(c.model === 'flex-pro');
+    this._offColor = { 'home': '#c9ced6', 'flex-home': '#d3d8df', 'flex-pro': '#353a42' }[c.model];
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
+        [hidden] { display: none !important; }
         .card {
-          --bg: #ffffff; --fg: #161b26; --muted: #5d6676; --line: #d8dee7; --well: #eef2f6;
-          --studio-a: #ffffff; --studio-b: #dfe5ec; --accent: #0a6c86; --accent-ink: #ffffff;
-          background: var(--ha-card-background, var(--bg));
-          color: var(--primary-text-color, var(--fg));
+          --sub: #5d6676; --line: #d8dee7; --well: #eef2f6; --accent: #0a6c86; --accent-ink: #ffffff;
+          background: var(--ha-card-background, var(--card-background-color, #ffffff));
+          color: var(--primary-text-color, #161b26);
           border-radius: var(--ha-card-border-radius, 12px);
           box-shadow: var(--ha-card-box-shadow, none);
           padding: 16px; box-sizing: border-box;
           font-family: var(--paper-font-body1_-_font-family, system-ui, sans-serif);
         }
         @media (prefers-color-scheme: dark) {
-          .card:not([data-theme="light"]) { --well: #1d242d; --studio-a: #2a313b; --studio-b: #14181e; --accent: #5fd0e8; --accent-ink: #061115; --muted: #97a2b1; --line: #262e39; }
+          .card:not([data-theme="light"]) { --sub: #97a2b1; --line: #262e39; --well: #1d242d; --accent: #5fd0e8; --accent-ink: #061115; }
         }
-        .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-        .title { font-size: 16px; font-weight: 650; margin: 0; }
-        .badge { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
-        .stage { display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 1fr); gap: 16px; align-items: center; }
-        @media (max-width: 480px) { .stage { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
-        .studio { border-radius: 12px; padding: 14px; width: 100%; max-width: 190px; background: radial-gradient(120% 90% at 50% 20%, var(--studio-a), var(--studio-b)); border: 1px solid var(--line); box-sizing: border-box; }
+        .device { max-width: 240px; margin: 0 auto; }
         svg { width: 100%; height: auto; display: block; overflow: visible; }
+        .panel { margin-top: 12px; display: grid; gap: 10px; }
         .state { font-size: 16px; font-weight: 650; }
-        .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-        .values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+        .sub { color: var(--sub); font-size: 12px; margin-top: 2px; }
+        .err { color: #c62828; font-size: 12px; margin-top: 4px; }
+        .values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
         .val { background: var(--well); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-width: 0; }
-        .val .k { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+        .val .k { font-size: 10px; color: var(--sub); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
         .val .v { font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-        .val .v small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 2px; }
-        .chip { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 12px; background: var(--well); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
-        .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+        .val .v small { font-size: 11px; font-weight: 500; color: var(--sub); margin-left: 2px; }
+        .chip { display: flex; align-items: center; gap: 8px; font-size: 12px; background: var(--well); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+        .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sub); flex: none; }
         .chip.active .dot { background: var(--accent); }
         .chip b { font-weight: 650; }
-        .controls { margin-top: 12px; display: grid; gap: 10px; }
+        .controls { display: grid; gap: 10px; }
         .row { display: grid; gap: 6px; }
-        .row h3 { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 650; }
+        .row h3 { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--sub); margin: 0; font-weight: 650; }
         .seg { display: flex; flex-wrap: wrap; gap: 6px; }
-        button { font: inherit; font-size: 12px; color: var(--primary-text-color, var(--fg)); background: var(--well); border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; cursor: pointer; min-height: 34px; }
+        button { font: inherit; font-size: 12px; color: var(--primary-text-color, #161b26); background: var(--well); border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; cursor: pointer; min-height: 34px; }
         button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
         button:disabled { opacity: .5; cursor: default; }
         .slider { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 12px; }
         input[type="range"] { width: 100%; accent-color: var(--accent); min-width: 0; }
         output { font-variant-numeric: tabular-nums; font-weight: 650; min-width: 44px; text-align: right; }
-        .msg { color: var(--muted); font-size: 11px; }
-        .err { color: #c62828; font-size: 12px; margin-top: 6px; }
-        .foot { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px; }
+        .msg { color: var(--sub); font-size: 11px; }
+        .ver { margin-top: 10px; text-align: right; font-size: 10px; color: var(--sub); font-variant-numeric: tabular-nums; }
       </style>
       <div class="card" part="card">
-        <div class="head">
-          <h2 class="title">${escapeHtml(c.name)}</h2>
-          <span class="badge" aria-label="Kartenversion">v${CARD_VERSION}</span>
-        </div>
-        <div class="stage">
-          <div class="studio">${shape}</div>
-          <div>
+        <div class="device">${shape}</div>
+        <div class="panel">
+          <div id="statusBox" hidden>
             <div class="state" id="state">-</div>
             <div class="sub" id="sub"></div>
-            <div class="values">
-              <div class="val"><div class="k">Ladestrom</div><div class="v" id="vA">-</div></div>
-              <div class="val"><div class="k">Leistung</div><div class="v" id="vW">-</div></div>
-              <div class="val"><div class="k">Energie seit Anstecken</div><div class="v" id="vS">-</div></div>
-              <div class="val"><div class="k">Gesamtenergie</div><div class="v" id="vT">-</div></div>
-            </div>
-            <div class="chip" id="chip"><span class="dot"></span><span id="chipText">Kein Chip aktiv</span></div>
             <div class="err" id="errMsg"></div>
           </div>
-        </div>
-        <div class="controls">
-          <div class="row" id="modeRow" hidden>
-            <h3>Lademodus</h3>
-            <div class="seg" id="modes" role="group" aria-label="Lademodus"></div>
+          <div class="values" id="valuesBox" hidden>
+            <div class="val"><div class="k">Ladestrom</div><div class="v" id="vA">-</div></div>
+            <div class="val"><div class="k">Leistung</div><div class="v" id="vW">-</div></div>
+            <div class="val"><div class="k">Energie seit Anstecken</div><div class="v" id="vS">-</div></div>
+            <div class="val"><div class="k">Gesamtenergie</div><div class="v" id="vT">-</div></div>
           </div>
-          <div class="row">
-            <h3>Ladestrom</h3>
-            <div class="slider">
-              <span class="msg">6 A</span>
-              <input type="range" id="amp" min="6" max="${Number(c.max_current)}" step="1" aria-label="Ladestrom in Ampere">
-              <output id="ampOut" for="amp">-</output>
+          <div class="chip" id="chipBox" hidden><span class="dot"></span><span id="chipText">Kein Chip aktiv</span></div>
+          <div class="controls" id="controlsBox" hidden>
+            <div class="row" id="modeRow" hidden>
+              <h3>Lademodus</h3>
+              <div class="seg" id="modes" role="group" aria-label="Lademodus"></div>
+            </div>
+            <div class="row">
+              <h3>Ladestrom</h3>
+              <div class="slider">
+                <span class="msg">6 A</span>
+                <input type="range" id="amp" min="6" max="${Number(c.max_current)}" step="1" aria-label="Ladestrom in Ampere">
+                <output id="ampOut" for="amp">-</output>
+              </div>
             </div>
           </div>
           <div class="msg" id="discoverMsg"></div>
         </div>
-        <div class="foot">
-          <span>Fronius Wattpilot by Lutarym</span>
-          <span>${CARD_TAG} v${CARD_VERSION}</span>
-        </div>
+        <div class="ver">Fronius-Card-by-Lutarym v${CARD_VERSION}</div>
       </div>`;
 
     const $ = (id) => this.shadowRoot.getElementById(id);
     this._els = {
-      state: $('state'), sub: $('sub'), vA: $('vA'), vW: $('vW'), vS: $('vS'), vT: $('vT'),
-      chip: $('chip'), chipText: $('chipText'), errMsg: $('errMsg'),
-      amp: $('amp'), ampOut: $('ampOut'), modeRow: $('modeRow'), modes: $('modes'),
-      discoverMsg: $('discoverMsg'), disp: $('disp'),
+      statusBox: $('statusBox'), state: $('state'), sub: $('sub'), errMsg: $('errMsg'),
+      valuesBox: $('valuesBox'), vA: $('vA'), vW: $('vW'), vS: $('vS'), vT: $('vT'),
+      chipBox: $('chipBox'), chipText: $('chipText'),
+      controlsBox: $('controlsBox'), amp: $('amp'), ampOut: $('ampOut'),
+      modeRow: $('modeRow'), modes: $('modes'), discoverMsg: $('discoverMsg'), disp: $('disp'),
     };
 
     this._els.amp.addEventListener('input', () => {
@@ -404,66 +475,73 @@ class FroniusWattpilotCard extends HTMLElement {
     this._built = true;
   }
 
+  // Wattpilot Go / Home: weißes Gehäuse, Ring als Bogen rechts am Stecker
   _homeShape() {
+    const n = 10, cx = 98, cy = 238, rr = 72;
     const dots = [];
-    for (let i = 0; i < 16; i++) {
-      const deg = -40 + i * (200 / 15);
-      const rad = (deg - 90) * Math.PI / 180;
-      dots.push(`<circle cx="${(118 + 58 * Math.cos(rad)).toFixed(2)}" cy="${(200 + 58 * Math.sin(rad)).toFixed(2)}" r="2.4" fill="#2a2f37"/>`);
+    for (let i = 0; i < n; i++) {
+      const rad = (i / (n - 1)) * 85 * Math.PI / 180;
+      const x = cx + rr * Math.sin(rad), y = cy - rr * Math.cos(rad);
+      dots.push(`<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="2.4"/>`);
     }
-    return `<svg viewBox="0 0 200 330" role="img" aria-label="Wallbox">
+    return `<svg viewBox="-4 -28 208 366" role="img" aria-label="Fronius Wattpilot Go / Home">
       <defs>
         <linearGradient id="hBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eef0f3"/><stop offset="1" stop-color="#d8dce2"/></linearGradient>
         <radialGradient id="hSock" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#2b2f36"/><stop offset="1" stop-color="#050608"/></radialGradient>
-        <filter id="hGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <radialGradient id="hBtn" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#666c76"/><stop offset="1" stop-color="#2f343b"/></radialGradient>
+        <filter id="hGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
-      <ellipse cx="100" cy="322" rx="72" ry="5" fill="#000" opacity=".25"/>
-      <rect x="8" y="10" width="184" height="306" rx="92" fill="url(#hBody)"/>
-      <rect x="8.5" y="10.5" width="183" height="305" rx="91.5" fill="none" stroke="#000" stroke-opacity=".12"/>
-      <rect x="92" y="0" width="16" height="20" rx="4" fill="#1b1e24"/>
-      <ellipse cx="100" cy="66" rx="34" ry="8" fill="none" stroke="#d6322c" stroke-width="3.2"/>
-      <text x="100" y="71" text-anchor="middle" font-size="14" font-style="italic" font-weight="700" fill="#d6322c" font-family="system-ui, sans-serif">Fronius</text>
-      <g id="led" filter="url(#hGlow)">${dots.join('')}</g>
-      <circle cx="118" cy="200" r="46" fill="url(#hSock)"/>
-      <circle cx="118" cy="200" r="46" fill="none" stroke="#000" stroke-opacity=".4"/>
-      <rect x="98" y="183" width="40" height="8" rx="3" fill="#15181d"/>
-      <text x="128" y="262" font-size="12" font-weight="700" fill="#2a2f37" font-family="system-ui, sans-serif">Wattpilot</text>
+      <ellipse cx="100" cy="334" rx="70" ry="4" fill="#000" opacity=".25"/>
+      <rect x="80" y="-24" width="40" height="28" rx="6" fill="#1b1e24"/>
+      <rect x="0" y="0" width="200" height="330" rx="80" fill="url(#hBody)"/>
+      <rect x=".5" y=".5" width="199" height="329" rx="79.5" fill="none" stroke="#000" stroke-opacity=".12"/>
+      <ellipse cx="100" cy="60" rx="42" ry="11" fill="#d7262e"/>
+      <text x="100" y="64.5" text-anchor="middle" font-size="12" font-style="italic" font-weight="700" fill="#ffffff" font-family="system-ui, sans-serif">Fronius</text>
+      <g transform="translate(100 102)" fill="none" stroke="#3a3f47" stroke-width="1.6" stroke-linecap="round"><circle r="2"/><path d="M-6 -4 Q-8 0 -6 4"/><path d="M6 -4 Q8 0 6 4"/><path d="M-10 -8 Q-14 0 -10 8"/><path d="M10 -8 Q14 0 10 8"/></g>
+      <circle cx="31" cy="165" r="16" fill="url(#hBtn)"/>
+      <g transform="translate(98 156)" fill="none" stroke="#3a3f47" stroke-width="1.1"><path d="M-4 3 C-5 -2 -1 -5 4 -5 C4 0 1 4 -4 3 Z M-4 3 L1 -1"/></g>
+      <g transform="translate(114 156)" fill="none" stroke="#3a3f47" stroke-width="1.1"><circle r="4.5"/><path d="M0 -2.5 V0 L2 1.2"/></g>
+      <text x="133" y="160" font-size="12" font-weight="700" fill="#2a2f37" font-family="system-ui, sans-serif">Wattpilot</text>
+      <circle cx="98" cy="238" r="68" fill="#15181d"/>
+      <circle cx="98" cy="238" r="58" fill="url(#hSock)"/>
+      <rect x="84" y="176" width="28" height="7" rx="3" fill="#0b0d10"/>
+      <g id="led" filter="url(#hGlow)" fill="#c9ced6">${dots.join('')}</g>
     </svg>`;
   }
 
+  // Wattpilot Flex Home und Flex Pro: Ring mit Segmenten, drei Symbole, Anzeige
   _flexShape(dark) {
-    const body = dark ? ['#4a4f57', '#3a3e46', '#25282e'] : ['#e8eaed', '#d9dce1', '#c3c8d0'];
-    const face = dark ? ['#3c4149', '#2a2e35'] : ['#f1f2f4', '#dfe2e7'];
-    const txt = dark ? '#e9edf3' : '#2a2f37';
-    const sub = dark ? '#9aa2ad' : '#6b7280';
+    const P = dark
+      ? { body: ['#4a4f57', '#3a3e46', '#2a2d33'], face: ['#3c4149', '#2a2e35'], ring: '#353a42', txt: '#e9edf3', sub: '#9aa2ad', logo: '#c9ced6' }
+      : { body: ['#eceef2', '#dfe2e7', '#cdd2d9'], face: ['#f5f6f8', '#e4e7ec'], ring: '#d3d8df', txt: '#2a2f37', sub: '#6b7280', logo: '#8a909a' };
+    const n = 48;
+    const pt = (a, r) => { const t = (a - 90) * Math.PI / 180; return [100 + r * Math.cos(t), 206 + r * Math.sin(t)]; };
     const segs = [];
-    for (let i = 0; i < 48; i++) {
-      const a0 = i * 7.5 + 0.8, a1 = (i + 1) * 7.5 - 0.8;
-      const p = (a) => { const r = (a - 90) * Math.PI / 180; return [100 + 80 * Math.cos(r), 170 + 80 * Math.sin(r)]; };
-      const p0 = p(a0), p1 = p(a1);
-      segs.push(`<path d="M${p0[0].toFixed(2)} ${p0[1].toFixed(2)} A80 80 0 0 1 ${p1[0].toFixed(2)} ${p1[1].toFixed(2)}" fill="none" stroke-width="5" stroke-linecap="round" stroke="${dark ? '#2e333b' : '#c3c8d0'}"/>`);
+    for (let i = 0; i < n; i++) {
+      const p0 = pt(i * 7.5 + 0.9, 70), p1 = pt((i + 1) * 7.5 - 0.9, 70);
+      segs.push(`<path d="M${p0[0].toFixed(2)} ${p0[1].toFixed(2)} A70 70 0 0 1 ${p1[0].toFixed(2)} ${p1[1].toFixed(2)}" fill="none" stroke="${P.ring}" stroke-width="6" stroke-linecap="round"/>`);
     }
-    return `<svg viewBox="0 0 200 330" role="img" aria-label="Wallbox">
+    return `<svg viewBox="-4 -4 208 338" role="img" aria-label="Fronius Wattpilot ${dark ? 'Flex Pro' : 'Flex Home'}">
       <defs>
-        <linearGradient id="fBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${body[0]}"/><stop offset=".55" stop-color="${body[1]}"/><stop offset="1" stop-color="${body[2]}"/></linearGradient>
-        <radialGradient id="fFace" cx=".5" cy=".3" r=".75"><stop offset="0" stop-color="${face[0]}"/><stop offset="1" stop-color="${face[1]}"/></radialGradient>
-        <filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="fBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.body[0]}"/><stop offset=".55" stop-color="${P.body[1]}"/><stop offset="1" stop-color="${P.body[2]}"/></linearGradient>
+        <radialGradient id="fFace" cx=".5" cy=".3" r=".75"><stop offset="0" stop-color="${P.face[0]}"/><stop offset="1" stop-color="${P.face[1]}"/></radialGradient>
+        <filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
-      <ellipse cx="100" cy="322" rx="74" ry="5" fill="#000" opacity=".25"/>
-      <rect x="10" y="8" width="180" height="310" rx="30" fill="url(#fBody)"/>
-      <rect x="10" y="8" width="180" height="310" rx="30" fill="none" stroke="#000" stroke-opacity=".15"/>
-      <ellipse cx="100" cy="30" rx="40" ry="8" fill="none" stroke="${dark ? '#e9edf3' : '#ffffff'}" stroke-opacity=".8" stroke-width="1.6"/>
-      <text x="100" y="35" text-anchor="middle" font-size="13" font-style="italic" font-weight="700" fill="${dark ? '#e9edf3' : '#ffffff'}" font-family="system-ui, sans-serif">Fronius</text>
-      <circle cx="100" cy="170" r="84" fill="${dark ? '#1b1f25' : '#cfd3d9'}" opacity=".9"/>
-      <circle cx="100" cy="170" r="80" fill="url(#fFace)"/>
+      <ellipse cx="100" cy="334" rx="74" ry="4" fill="#000" opacity=".25"/>
+      <rect x="0" y="0" width="200" height="330" rx="22" fill="url(#fBody)"/>
+      <rect x=".5" y=".5" width="199" height="329" rx="21.5" fill="none" stroke="#000" stroke-opacity=".15"/>
+      <ellipse cx="100" cy="60" rx="36" ry="9" fill="none" stroke="${P.logo}" stroke-width="1.4"/>
+      <text x="100" y="63.5" text-anchor="middle" font-size="11" font-style="italic" font-weight="700" fill="${P.logo}" font-family="system-ui, sans-serif">Fronius</text>
+      <circle cx="100" cy="206" r="62" fill="url(#fFace)"/>
       <g id="led" filter="url(#fGlow)">${segs.join('')}</g>
-      <g transform="translate(72 160)"><circle r="11" fill="none" stroke="${sub}" stroke-width="1.2"/><path d="M1 -5 L-3 1 H0 L-1 5 L3 -1 H0 Z" fill="${txt}"/></g>
-      <g transform="translate(100 160)"><circle r="11" fill="none" stroke="${sub}" stroke-width="1.2"/><path d="M-4 3 C-5 -2 -1 -5 4 -5 C4 0 1 4 -4 3 Z M-4 3 L1 -1" fill="none" stroke="${txt}" stroke-width="1.1" stroke-linejoin="round"/></g>
-      <g transform="translate(128 160)"><circle r="11" fill="none" stroke="${sub}" stroke-width="1.2"/><circle r="4.5" fill="none" stroke="${txt}" stroke-width="1.1"/><path d="M0 -2.5 V0 L2 1.2" fill="none" stroke="${txt}" stroke-width="1.1" stroke-linecap="round"/></g>
-      <text x="62" y="200" font-size="7" fill="${sub}" font-family="system-ui, sans-serif">Session kWh</text>
-      <text x="62" y="210" font-size="7" fill="${sub}" font-family="system-ui, sans-serif">Total kWh</text>
-      <text x="62" y="220" font-size="7" fill="${sub}" font-family="system-ui, sans-serif">Power kW</text>
-      <text id="disp" x="134" y="210" text-anchor="middle" font-size="22" font-weight="700" fill="${txt}" font-family="ui-monospace, Menlo, Consolas, monospace">-</text>
+      <g transform="translate(100 176) scale(.9)" fill="none" stroke="${P.txt}" stroke-width="1.6" stroke-linecap="round"><circle r="2"/><path d="M-6 -4 Q-8 0 -6 4"/><path d="M6 -4 Q8 0 6 4"/><path d="M-10 -8 Q-14 0 -10 8"/><path d="M10 -8 Q14 0 10 8"/></g>
+      <g transform="translate(78 210)"><circle r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><path d="M1 -5 L-3 1 H0 L-1 5 L3 -1 H0 Z" fill="${P.txt}"/></g>
+      <g transform="translate(100 210)"><circle r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><path d="M-4 3 C-5 -2 -1 -5 4 -5 C4 0 1 4 -4 3 Z M-4 3 L1 -1" fill="none" stroke="${P.txt}" stroke-width="1.1" stroke-linejoin="round"/></g>
+      <g transform="translate(122 210)"><circle r="8" fill="none" stroke="${P.sub}" stroke-width="1"/><circle r="4" fill="none" stroke="${P.txt}" stroke-width="1"/><path d="M0 -2.5 V0 L2 1.2" fill="none" stroke="${P.txt}" stroke-width="1" stroke-linecap="round"/></g>
+      <text id="disp" x="121" y="243" text-anchor="middle" font-size="16" font-weight="700" fill="${P.txt}" font-family="ui-monospace, Menlo, Consolas, monospace">-</text>
+      <text x="94" y="252" font-size="5" fill="${P.sub}" font-family="system-ui, sans-serif">Session kWh</text>
+      <text x="94" y="257" font-size="5" fill="${P.sub}" font-family="system-ui, sans-serif">Total kWh</text>
+      <text x="94" y="262" font-size="5" fill="${P.sub}" font-family="system-ui, sans-serif">Power kW</text>
     </svg>`;
   }
 
@@ -471,22 +549,23 @@ class FroniusWattpilotCard extends HTMLElement {
 
   _update() {
     if (!this._config || !this._hass || !this._built) return;
+    const c = this._config;
     const r = this._read();
     this._readings = r;
     const els = this._els;
     const lang = this._hass.language || 'de';
     const fmt = (v, d) => (v === null || v === undefined) ? '-' : v.toLocaleString(lang, { minimumFractionDigits: d, maximumFractionDigits: d });
 
-    // Status: Fehler hat Vorrang, sonst der Fahrzeugstatus
-    let stateText;
-    if (r.hasError) stateText = 'Fehler';
-    else if (r.car) stateText = CAR_LABEL[r.car] || r.car;
-    else stateText = '-';
-    els.state.textContent = stateText;
+    els.statusBox.hidden = !c.show_status;
+    els.valuesBox.hidden = !c.show_values;
+    els.chipBox.hidden = !c.show_chip;
+    els.controlsBox.hidden = !c.show_controls;
 
-    // Begründung des Geräts (Klartext aus der Integration), wenn bekannt
-    const reason = r.statusKey ? (MODEL_STATUS_LABEL[r.statusKey] || r.statusKey) : '';
-    els.sub.textContent = reason;
+    // Status: Fehler hat Vorrang, sonst der Fahrzeugstatus
+    if (r.hasError) els.state.textContent = 'Fehler';
+    else els.state.textContent = r.car ? (CAR_LABEL[r.car] || r.car) : '-';
+    els.sub.textContent = r.statusKey ? (MODEL_STATUS_LABEL[r.statusKey] || r.statusKey) : '';
+    els.errMsg.textContent = r.hasError ? 'Fehler: ' + (ERR_LABEL[r.errKey] || r.errKey || '') : '';
 
     els.vA.innerHTML = (r.charging && r.amp !== null) ? `${fmt(r.amp, 0)}<small>A</small>` : '-';
     els.vW.innerHTML = r.powerKw !== null ? `${fmt(r.powerKw, 2)}<small>kW</small>` : '-';
@@ -498,17 +577,15 @@ class FroniusWattpilotCard extends HTMLElement {
     if (r.activeCard) {
       const e = r.activeCard.energy;
       const eTxt = typeof e === 'number' ? ` (${fmt(e / 1000, 2)} kWh)` : '';
-      els.chip.classList.add('active');
+      els.chipBox.classList.add('active');
       els.chipText.innerHTML = `Chip: <b>${escapeHtml(r.activeCard.name || 'ohne Namen')}</b>${eTxt}`;
     } else {
-      els.chip.classList.remove('active');
+      els.chipBox.classList.remove('active');
       els.chipText.textContent = r.cardCount ? `Kein Chip aktiv (${r.cardCount} registriert)` : 'Kein Chip aktiv';
     }
 
-    els.errMsg.textContent = r.hasError ? 'Fehler: ' + (ERR_LABEL[r.errKey] || r.errKey || '') : '';
-
     // Ladestrom-Regler
-    const cur = r.amp ?? Number(this._config.max_current);
+    const cur = r.amp ?? Number(c.max_current);
     if (this._pendingAmp === null) {
       els.amp.max = r.maxA;
       els.amp.value = Math.min(cur, r.maxA);
@@ -556,7 +633,7 @@ class FroniusWattpilotCard extends HTMLElement {
     const r = this._readings;
     const n = this._ledEls.length;
     const isHome = this._config.model === 'home';
-    const dark = isHome ? '#2a2f37' : '#2e333b';
+    const off = this._offColor;
     const lit = r.connected ? Math.round(n * (r.amp ?? 0) / Math.max(1, r.maxA)) : 0;
 
     let kind = 'idle';
@@ -566,7 +643,7 @@ class FroniusWattpilotCard extends HTMLElement {
     else if (r.charging) kind = 'chase';
     else if (r.connected) kind = 'ready';
 
-    // Farbe beim Laden: PV-Überschuss erkennt die Karte am Gerätestatus, sonst die Einstellung
+    // Laden mit PV-Überschuss erkennt die Karte am Gerätestatus, sonst zählt led_source
     const pvCharging = r.statusKey === 'chargingbecausepvsurplus';
     const chargeColor = pvCharging ? COLORS.yellow : (LED_SOURCE_COLOR[this._config.led_source] || COLORS.yellow);
     const flashOn = Math.floor(now / FLASH_MS) % 2 === 0;
@@ -578,19 +655,19 @@ class FroniusWattpilotCard extends HTMLElement {
         c = `hsl(${Math.round(((i / n) * 360 + now / 8) % 360)}, 90%, 58%)`;
       } else if (kind === 'flash') {
         const top = isHome ? true : (i < 4 || i >= n - 4);
-        c = top && flashOn ? COLORS.red : dark;
+        c = top && flashOn ? COLORS.red : off;
       } else if (kind === 'done') {
         c = COLORS.green;
       } else if (kind === 'chase') {
         if (i < lit) c = chargeColor;
         else {
           let d = Math.abs(i - runPos); d = Math.min(d, n - d);
-          c = d < 1.6 ? '#7d8592' : dark;
+          c = d < 1.6 ? '#7d8592' : off;
         }
       } else if (kind === 'ready') {
-        c = i < lit ? COLORS.blue : dark;
+        c = i < lit ? COLORS.blue : off;
       } else {
-        c = dark;
+        c = off;
       }
       if (isHome) e.setAttribute('fill', c);
       else e.setAttribute('stroke', c);
@@ -599,7 +676,7 @@ class FroniusWattpilotCard extends HTMLElement {
 }
 
 if (!customElements.get(CARD_TAG)) {
-  customElements.define(CARD_TAG, FroniusWattpilotCard);
+  customElements.define(CARD_TAG, FroniusCardByLutarym);
 }
 
 window.customCards = window.customCards || [];
@@ -607,13 +684,13 @@ if (!window.customCards.some((c) => c.type === CARD_TAG)) {
   window.customCards.push({
     type: CARD_TAG,
     name: 'Fronius-Card-by-Lutarym',
-    description: 'Wallbox-Karte für den Fronius Wattpilot mit LED-Ring, Status, Chip-Anzeige und Steuerung (Integration: Fronius Wattpilot by Lutarym).',
+    description: 'Wallbox-Grafik des Fronius Wattpilot mit animiertem LED-Ring. Zusatzinformationen sind im Editor zuschaltbar.',
     preview: false,
   });
 }
 
 console.info(
-  '%c FRONIUS-WATTPILOT-CARD %c v' + CARD_VERSION + ' ',
+  '%c FRONIUS-CARD-BY-LUTARYM %c v' + CARD_VERSION + ' ',
   'color: #fff; background: #0a6c86; font-weight: 700;',
   'color: #0a6c86; background: #e6f4f8; font-weight: 700;'
 );

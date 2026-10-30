@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Gehäuse nach den Fotos von Fronius überarbeitet (Go / Home, Flex Home, Flex Pro). Die Grafik ist nicht vermessen.
+- Standard: nur die Wallbox-Grafik mit LED-Ring. Zusatzinformationen sind aus.
+- Neu: Visueller Editor in Home Assistant mit Modellauswahl und Schaltern für Status, Werte, RFID-Chip und Regler.
+- Neu: Entitäten lassen sich im Editor manuell angeben.
+- Die Karte heißt jetzt Fronius-Card-by-Lutarym (Kartentyp `custom:fronius-card-by-lutarym`).
+- Die Versionsangabe bleibt klein unten in der Karte.
+
 ## 0.2.0
 
 - Entitäten werden automatisch über die Integration Fronius Wattpilot by Lutarym gefunden. Die Zuordnung erfolgt über die eindeutige Kennung der Entität, nicht über den Namen. Damit funktioniert die Karte unabhängig von der Sprache der Instanz.

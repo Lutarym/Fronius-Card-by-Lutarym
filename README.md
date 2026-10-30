@@ -1,24 +1,24 @@
 # Fronius-Card-by-Lutarym
 
-Lovelace-Karte für den Fronius Wattpilot. Sie zeigt das Gehäuse mit animiertem LED-Ring, Status, Werte, den aktiven RFID-Chip und die Steuerung für Ladestrom und Lademodus.
+Lovelace-Karte für den Fronius Wattpilot. Sie zeigt das Gehäuse mit animiertem LED-Ring. Zusatzinformationen wie Status, Werte, RFID-Chip und Regler sind im Editor zuschaltbar.
 
-**Version: 0.2.0** (steht in der Karte oben rechts und unten rechts)
+**Version: 0.3.0** (steht unten rechts in der Karte)
 
 Die Karte braucht die Integration **Fronius Wattpilot by Lutarym** (`fronius_wattpilot_lutarym`). Die normale Fronius-Integration unterstützt den Wattpilot nicht.
 
-Getestet ist der Code mit einem simulierten Home-Assistant-Objekt. Ein Test am echten Wattpilot steht noch aus.
+Getestet ist der Code mit einem simulierten Home-Assistant-Objekt. Der visuelle Editor und ein Test am echten Wattpilot stehen noch aus.
 
 ## Funktionen
 
-- Findet die Entitäten der Integration automatisch
 - Gehäuse für drei Bauformen: Go / Home (weiß), Flex Home (hell), Flex Pro (anthrazit)
-- LED-Ring mit Animation, siehe Abschnitt „LED-Verhalten“
-- Status mit Begründung des Geräts, zum Beispiel „Laden mit PV-Überschuss“
-- Anzeige von Ladestrom, Leistung, Energie seit Anstecken und Gesamtenergie
-- Anzeige des aktiven RFID-Chips mit Name und Energie
-- Ladestrom-Regler (schreibt auf das Gerät)
-- Auswahl des Lademodus (schreibt auf das Gerät)
-- Fehleranzeige
+- Animierter LED-Ring, siehe Abschnitt „LED-Verhalten“
+- Visueller Editor in Home Assistant mit Auswahlfeldern
+- Findet die Entitäten der Integration automatisch
+- Zusatzinformationen sind standardmäßig aus und im Editor einzeln zuschaltbar:
+  - Status mit Begründung des Geräts und Fehler
+  - Werte: Ladestrom, Leistung, Energie seit Anstecken, Gesamtenergie
+  - Aktiver RFID-Chip mit Name und Energie
+  - Regler für Ladestrom und Lademodus (schreiben auf das Gerät)
 
 ## Installation
 
@@ -34,35 +34,57 @@ Getestet ist der Code mit einem simulierten Home-Assistant-Objekt. Ein Test am e
 2. Unter **Einstellungen, Dashboards, Ressourcen** eine Ressource hinzufügen:
    - URL: `/local/fronius-card-by-lutarym/Fronius-Card-by-Lutarym.js`
    - Typ: JavaScript-Modul
-3. Browser neu laden.
+3. Browser neu laden (Strg+F5).
 
-## Konfiguration
+## Konfiguration im Editor
 
-Minimal reicht dieses Beispiel. Die Karte sucht alle Entitäten der Integration selbst:
+1. Dashboard öffnen, **Bearbeiten**, dann **Karte hinzufügen**.
+2. Nach „Fronius“ suchen oder die Karte unter „Benutzerdefiniert“ wählen.
+3. Im Editor das **Modell** auswählen.
+4. Unter **Zusatzinformationen anzeigen** die gewünschten Schalter einschalten.
+5. Unter **Entitäten manuell angeben** nur etwas eintragen, wenn die automatische Erkennung nicht funktioniert.
+
+## Konfiguration in YAML
+
+Minimal reicht dieses Beispiel. Die Grafik ist dann die einzige Anzeige:
 
 ```yaml
 type: custom:fronius-card-by-lutarym
-name: Wattpilot
 model: flex-home
 max_current: 16
 led_source: pv
+```
+
+Mit Zusatzinformationen:
+
+```yaml
+type: custom:fronius-card-by-lutarym
+model: flex-pro
+show_status: true
+show_values: true
+show_chip: true
+show_controls: true
 ```
 
 ### Optionen
 
 | Option | Pflicht | Standard | Bedeutung |
 |---|---|---|---|
-| `name` | nein | Wattpilot | Titel der Karte |
+| `name` | nein | Wattpilot | Name in der Konfiguration |
 | `model` | nein | flex-home | `home` (Go / Home), `flex-home` oder `flex-pro` |
 | `max_current` | nein | 16 | Höchstwert für den Ladestrom-Regler in Ampere |
 | `led_source` | nein | pv | Farbe des LED-Rings beim Laden ohne PV-Überschuss: `pv` (gelb), `battery` (grün), `grid` (weiß) |
 | `serial` | nein | | Seriennummer, wenn mehrere Wattpilot eingerichtet sind |
+| `show_status` | nein | false | Status und Fehler anzeigen |
+| `show_values` | nein | false | Werte anzeigen |
+| `show_chip` | nein | false | RFID-Chip anzeigen |
+| `show_controls` | nein | false | Regler für Ladestrom und Lademodus anzeigen |
 
 Die Karte liest das Maximum des Ladestroms aus der Entität und begrenzt es auf `max_current`. Für einen Flex Home 11 C6 bleibt `max_current` daher bei 16.
 
 ### Entitäten manuell angeben (optional)
 
-Wenn die automatische Erkennung nicht funktioniert, lassen sich Entitäten mit diesen Optionen eintragen. Eine manuell angegebene Entität hat Vorrang.
+Diese Optionen überschreiben die automatische Erkennung. Eine manuell angegebene Entität hat Vorrang.
 
 | Option | Entität der Integration |
 |---|---|
@@ -77,25 +99,13 @@ Wenn die automatische Erkennung nicht funktioniert, lassen sich Entitäten mit d
 | `active_card` | Aktive Transaktion (Zahl) |
 | `cards` | Registrierte RFID-Karten (Sensor) |
 
-Beispiel:
-
-```yaml
-type: custom:fronius-card-by-lutarym
-name: Wattpilot
-model: flex-pro
-charging_current: number.wattpilot_charging_current
-power: sensor.wattpilot_charging_power_total
-car: sensor.wattpilot_car
-mode: select.wattpilot_logic_mode
-```
-
 Die Entitäts-IDs in deiner Instanz findest du unter **Einstellungen, Geräte und Dienste, Entitäten**.
 
 ### Automatische Erkennung
 
 Die Karte liest die Entitäts-Registry von Home Assistant. Sie erkennt die Entitäten der Integration an ihrer eindeutigen Kennung, die aus Seriennummer und Schlüssel besteht. Die Namen hängen nicht von der Sprache ab.
 
-Wenn die Registry nicht gelesen werden kann, zeigt die Karte einen Hinweis. Dann trägst du die Entitäten manuell ein, wie oben beschrieben. Ob Nutzer ohne Administratorrechte die Registry lesen dürfen, habe ich nicht geprüft.
+Wenn die Registry nicht gelesen werden kann, zeigt die Karte einen Hinweis. Dann trägst du die Entitäten im Editor manuell ein. Ob Nutzer ohne Administratorrechte die Registry lesen dürfen, habe ich nicht geprüft.
 
 ## LED-Verhalten
 
@@ -121,16 +131,17 @@ Diese Werte stehen im Code als Konstanten am Anfang der Datei und lassen sich do
 
 Die Karte zeigt den Chip, dessen Nummer in der Entität „Aktive Transaktion“ steht. Wert 0 bedeutet kein Chip. Wert 1 entspricht dem ersten Eintrag der Kartenliste, 2 dem zweiten, und so weiter. Name und Energie kommen aus der Liste „Registrierte RFID-Karten“.
 
-Ob die Entität auch dann einen Wert zeigt, wenn ein Chip nur vorgehalten wird und kein Ladevorgang läuft, habe ich nicht am Gerät geprüft. Das bitte in deiner Instanz testen.
+Ob die Entität auch dann einen Wert zeigt, wenn ein Chip nur vorgehalten wird und kein Ladevorgang läuft, habe ich nicht am Gerät geprüft.
 
 ## Bekannte Grenzen
 
-- **Fehlertexte:** Die Karte nutzt die deutschen Texte der Integration. In anderen Sprachen bleiben die Texte der Integration auf Deutsch.
+- **Grafik:** Die Gehäuse sind nach den Fotos von Fronius nachgezeichnet, nicht vermessen. Abweichungen im Detail sind möglich.
+- **Visueller Editor:** Der Editor ist noch nicht in einer echten Home-Assistant-Instanz getestet.
+- **Fehlertexte:** Die Karte nutzt die deutschen Texte der Integration.
 - **Mehrere Wattpilot:** Ohne `serial` nimmt die Karte den ersten gefundenen Wattpilot.
 - **Farbe bei Netz oder Speicher:** Die Karte erkennt die Quelle nicht selbst. Die Farbe kommt aus `led_source`.
 - **LED-Farben:** Die Farben stammen aus einer Zusammenfassung des Handbuchs. Eine zweite Quelle habe ich nicht gefunden.
 - **Leistungseinheit:** Die Karte rechnet Watt in Kilowatt um, wenn die Entität die Einheit W angibt. Die README der Integration weist darauf hin, dass die Skalierung möglicherweise abweicht. Bitte mit der Wattpilot-App vergleichen.
-- **Gehäuse:** Die Formen beruhen auf Fotos von Fronius und sind nicht vermessen. Die Form der mobilen Go-Modelle ist nicht geprüft, sie nutzt die Form der Home-Modelle.
 - **Gerätetest:** Die Karte ist nicht am echten Wattpilot getestet.
 
 ## Hinweis zur Steuerung
