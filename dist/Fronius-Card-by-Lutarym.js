@@ -1,10 +1,10 @@
 /*
  * Fronius-Card-by-Lutarym
  * Lovelace-Karte für den Fronius Wattpilot (Integration: fronius_wattpilot_lutarym)
- * Version: 0.3.0
+ * Version: 0.4.0
  * Lizenz: MIT
  */
-const CARD_VERSION = '0.3.0';
+const CARD_VERSION = '0.4.0';
 const CARD_TAG = 'fronius-card-by-lutarym';
 const INTEGRATION_DOMAIN = 'fronius_wattpilot_lutarym';
 
@@ -289,6 +289,14 @@ class FroniusCardByLutarym extends HTMLElement {
     }
   }
 
+  // Kurzer Hinweis in der Karte, vergeht nach 8 Sekunden
+  _setNotice(text) {
+    this._notice = text;
+    clearTimeout(this._noticeTimer);
+    this._noticeTimer = setTimeout(() => { this._notice = ''; this._update(); }, 8000);
+    this._update();
+  }
+
   // Manuelle Entität hat Vorrang, sonst die automatisch gefundene
   _ent(key) {
     const override = this._config ? this._config[CONFIG_NAME[key]] : null;
@@ -479,8 +487,15 @@ class FroniusCardByLutarym extends HTMLElement {
     this._modeBtns = Array.from(this.shadowRoot.querySelectorAll('.mode-btn'));
     const press = (btn) => {
       const id = this._ent(KEYS.mode);
-      if (!id || !this._hass) return;
-      this._hass.callService('select', 'select_option', { entity_id: id, option: btn.dataset.opt });
+      if (!this._hass) return;
+      if (!id) {
+        const msg = 'Lademodus-Entität nicht gefunden. Im Editor unter "Entitäten manuell angeben" den Lademodus eintragen.';
+        console.warn('[Fronius-Card-by-Lutarym] ' + msg);
+        this._setNotice(msg);
+        return;
+      }
+      Promise.resolve(this._hass.callService('select', 'select_option', { entity_id: id, option: btn.dataset.opt }))
+        .catch((e) => this._setNotice('Umschalten fehlgeschlagen: ' + (e?.message || e)));
     };
     this._modeBtns.forEach((btn) => {
       btn.addEventListener('click', () => press(btn));
@@ -642,7 +657,7 @@ class FroniusCardByLutarym extends HTMLElement {
       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 
-    els.discoverMsg.textContent = this._discoverMsg || '';
+    els.discoverMsg.textContent = this._notice || this._discoverMsg || '';
   }
 
   // ---------- LED-Animation ----------
