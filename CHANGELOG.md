@@ -7,7 +7,7 @@
 - Neu: Visueller Editor in Home Assistant mit Modellauswahl und Schaltern für Status, Werte, RFID-Chip und Regler.
 - Neu: Entitäten lassen sich im Editor manuell angeben.
 - Die Karte heißt jetzt Fronius-Card-by-Lutarym (Kartentyp `custom:fronius-card-by-lutarym`).
-- Die Versionsangabe bleibt klein unten in der Karte.
+- Die Version steht im Editor unter dem Feld „Name“, nicht mehr in der Karte.
 
 ## 0.2.0
 

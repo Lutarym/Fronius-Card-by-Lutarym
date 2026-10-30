@@ -238,6 +238,7 @@ class FroniusCardByLutarym extends HTMLElement {
         },
       ],
       computeLabel: (field) => FIELD_LABEL[field.name],
+      computeHelper: (field) => (field.name === 'name' ? 'Fronius-Card-by-Lutarym v' + CARD_VERSION : undefined),
       assertConfig: (config) => {
         if (config.model && !MODELS[config.model]) throw new Error('Unbekanntes Modell');
       },
@@ -415,7 +416,6 @@ class FroniusCardByLutarym extends HTMLElement {
         input[type="range"] { width: 100%; accent-color: var(--accent); min-width: 0; }
         output { font-variant-numeric: tabular-nums; font-weight: 650; min-width: 44px; text-align: right; }
         .msg { color: var(--sub); font-size: 11px; }
-        .ver { margin-top: 10px; text-align: right; font-size: 10px; color: var(--sub); font-variant-numeric: tabular-nums; }
       </style>
       <div class="card" part="card">
         <div class="device">${shape}</div>
@@ -448,7 +448,6 @@ class FroniusCardByLutarym extends HTMLElement {
           </div>
           <div class="msg" id="discoverMsg"></div>
         </div>
-        <div class="ver">Fronius-Card-by-Lutarym v${CARD_VERSION}</div>
       </div>`;
 
     const $ = (id) => this.shadowRoot.getElementById(id);

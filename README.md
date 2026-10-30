@@ -2,7 +2,7 @@
 
 Lovelace-Karte für den Fronius Wattpilot. Sie zeigt das Gehäuse mit animiertem LED-Ring. Zusatzinformationen wie Status, Werte, RFID-Chip und Regler sind im Editor zuschaltbar.
 
-**Version: 0.3.0** (steht unten rechts in der Karte)
+**Version: 0.3.0** (steht im Editor unter dem Feld „Name“)
 
 Die Karte braucht die Integration **Fronius Wattpilot by Lutarym** (`fronius_wattpilot_lutarym`). Die normale Fronius-Integration unterstützt den Wattpilot nicht.
 
