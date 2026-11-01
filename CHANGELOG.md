@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+- Neu: Demo-Modus („Demo-Modus (alles simuliert)“ im Editor). Die Karte braucht dann keine Integration. Zustände, Werte, Chip, Lademodus, Regler und Fahrzeugfoto wechseln alle 14 Sekunden. Tasten und Regler funktionieren lokal in der Simulation.
+
 ## 0.5.0
 
 - Neu: Fahrzeugfoto als Zusatzinformation. Auswahl im Editor unter „Fahrzeug“: keins, VW e-up oder BYD Dolphin Surf Comfort. Anzeige im Editor unter „Fahrzeug anzeigen“.
