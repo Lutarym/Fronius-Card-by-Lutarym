@@ -1,10 +1,10 @@
 /*
  * Fronius-Card-by-Lutarym
  * Lovelace-Karte für den Fronius Wattpilot (Integration: fronius_wattpilot_lutarym)
- * Version: 0.6.0
+ * Version: 0.5.5
  * Lizenz: MIT
  */
-const CARD_VERSION = '0.6.0';
+const CARD_VERSION = '0.5.5';
 const CARD_TAG = 'fronius-card-by-lutarym';
 const INTEGRATION_DOMAIN = 'fronius_wattpilot_lutarym';
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0
+## 0.5.5
 
 - Neu: Demo-Modus („Demo-Modus (alles simuliert)“ im Editor). Die Karte braucht dann keine Integration. Zustände, Werte, Chip, Lademodus, Regler und Fahrzeugfoto wechseln alle 14 Sekunden. Tasten und Regler funktionieren lokal in der Simulation.
 
