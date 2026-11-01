@@ -2,7 +2,7 @@
 
 Lovelace-Karte für den Fronius Wattpilot. Sie zeigt das Gehäuse mit animiertem LED-Ring. Zusatzinformationen wie Status, Werte, RFID-Chip und Regler sind im Editor zuschaltbar.
 
-**Version: 0.4.0** (steht im Editor unter dem Feld „Name“)
+**Version: 0.5.0** (steht im Editor unter dem Feld „Name“)
 
 Die Karte braucht die Integration **Fronius Wattpilot by Lutarym** (`fronius_wattpilot_lutarym`). Die normale Fronius-Integration unterstützt den Wattpilot nicht.
 
@@ -20,6 +20,7 @@ Getestet ist der Code mit einem simulierten Home-Assistant-Objekt. Der visuelle 
   - Werte: Ladestrom, Leistung, Energie seit Anstecken, Gesamtenergie
   - Aktiver RFID-Chip mit Name und Energie
   - Regler für Ladestrom und Lademodus (schreiben auf das Gerät)
+  - Fahrzeugfoto (VW e-up oder BYD Dolphin Surf Comfort) mit Statusabzeichen
 
 ## Installation
 
@@ -80,6 +81,8 @@ show_controls: true
 | `show_values` | nein | false | Werte anzeigen |
 | `show_chip` | nein | false | RFID-Chip anzeigen |
 | `show_controls` | nein | false | Regler für Ladestrom und Lademodus anzeigen |
+| `show_car` | nein | false | Fahrzeugfoto mit Statusabzeichen anzeigen |
+| `vehicle` | nein | none | `none`, `vw-e-up` oder `byd-dolphin-surf` |
 
 Die Karte liest das Maximum des Ladestroms aus der Entität und begrenzt es auf `max_current`. Für einen Flex Home 11 C6 bleibt `max_current` daher bei 16.
 
@@ -135,6 +138,9 @@ Die Karte zeigt den Chip, dessen Nummer in der Entität „Aktive Transaktion“
 Ob die Entität auch dann einen Wert zeigt, wenn ein Chip nur vorgehalten wird und kein Ladevorgang läuft, habe ich nicht am Gerät geprüft.
 
 ## Bekannte Grenzen
+
+- **Fahrzeugfotos:** Die Fotos stammen aus deinen Bilddateien. Die Bildrechte liegen beim Hersteller bzw. Anbieter. Für ein öffentliches GitHub-Repository vorher klären oder die Fotos entfernen. Auf dem BYD-Foto ist ein Kennzeichen mit dem Schriftzug „FINN“ zu sehen.
+- **Fahrzeug-Status:** Das Abzeichen „Wartet auf PV-Überschuss“ ist abgeleitet (Fahrzeug angesteckt und Modus Eco). Die Integration meldet dafür keinen eigenen Status.
 
 - **Grafik:** Die Gehäuse sind nach den Fotos von Fronius nachgezeichnet, nicht vermessen. Abweichungen im Detail sind möglich.
 - **Visueller Editor:** Der Editor ist noch nicht in einer echten Home-Assistant-Instanz getestet.
