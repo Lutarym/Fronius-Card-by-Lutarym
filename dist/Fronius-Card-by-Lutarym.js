@@ -1,10 +1,10 @@
 /*
  * Fronius-Card-by-Lutarym
  * Lovelace-Karte für den Fronius Wattpilot (Integration: fronius_wattpilot_lutarym)
- * Version: 0.5.5
+ * Version: 0.8.0
  * Lizenz: MIT
  */
-const CARD_VERSION = '0.5.5';
+const CARD_VERSION = '0.8.0';
 const CARD_TAG = 'fronius-card-by-lutarym';
 const INTEGRATION_DOMAIN = 'fronius_wattpilot_lutarym';
 
@@ -75,6 +75,12 @@ const LED_SOURCE_OPTIONS = [
 ];
 
 // Fahrzeuge: Fotos (freigestellt, transparenter Hintergrund)
+const CAR_STYLE_OPTIONS = [
+  { value: 'flow', label: 'Energiefluss (Punkte laufen zum Auto)' },
+  { value: 'badge', label: 'Symbol am Foto' },
+  { value: 'diagram', label: 'Mini-Diagramm Sonne, Wallbox, Auto' },
+  { value: 'glow', label: 'Foto-Glow in Statusfarbe' },
+];
 const VEHICLE_OPTIONS = [
   { value: 'none', label: 'Keins' },
   { value: 'vw-e-up', label: 'VW e-up' },
@@ -95,16 +101,6 @@ const DEMO_SCENARIOS = [
   { car: 'complete', lmo: 'standard', status: 'notchargingbecausescheduler', err: 'none', charge: false },
   { car: 'error', lmo: 'standard', status: 'notchargingbecauseovertemperature', err: 'overtemp', charge: false },
 ];
-
-// Symbole für das Statusabzeichen auf dem Foto
-const CAR_GLYPH = {
-  plug: '<rect x="-6" y="-4" width="12" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M-3 -4 V-9 M3 -4 V-9 M0 5 V9" stroke="currentColor" stroke-width="2"/>',
-  wait: '<circle r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M0 -8 V-10 M0 8 V10 M-8 0 H-10 M8 0 H10 M-5.6 -5.6 L-7 -7 M5.6 5.6 L7 7 M-5.6 5.6 L-7 7 M5.6 -5.6 L7 -7"/></g>',
-  pvcharge: '<path d="M2 -10 L-5 2 H0 L-2 10 L5 -2 H0 Z" fill="currentColor"/>',
-  charge: '<path d="M2 -10 L-5 2 H0 L-2 10 L5 -2 H0 Z" fill="currentColor"/>',
-  done: '<path d="M-6 0 L-2 4 L6 -5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
-  err: '<path d="M-5 -5 L5 5 M5 -5 L-5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
-};
 
 // Zeitwerte der Animation. Im Handbuch nicht angegeben, daher Annahmen.
 const RAINBOW_MS = 3000;
@@ -148,6 +144,7 @@ const FIELD_LABEL = {
   name: 'Name',
   demo: 'Demo-Modus (alles simuliert)',
   vehicle: 'Fahrzeug',
+  car_style: 'Darstellung des Ladestatus',
   show_car: 'Fahrzeug anzeigen',
   model: 'Modell',
   max_current: 'Höchstwert Ladestrom (A)',
@@ -211,6 +208,7 @@ class FroniusCardByLutarym extends HTMLElement {
       show_controls: false,
       show_car: false,
       vehicle: 'none',
+      car_style: 'flow',
       demo: false,
     }, config);
     if (!MODELS[this._config.model]) {
@@ -289,6 +287,7 @@ class FroniusCardByLutarym extends HTMLElement {
         { name: 'max_current', selector: { number: { min: 6, max: 32, step: 1, mode: 'box' } } },
         { name: 'led_source', selector: { select: { options: LED_SOURCE_OPTIONS } } },
         { name: 'vehicle', selector: { select: { options: VEHICLE_OPTIONS } } },
+        { name: 'car_style', selector: { select: { options: CAR_STYLE_OPTIONS } } },
         { name: 'demo', selector: { boolean: {} } },
         { name: 'serial', selector: { text: {} } },
         {
@@ -506,9 +505,35 @@ class FroniusCardByLutarym extends HTMLElement {
         .carwrap { position: relative; width: 100%; max-width: 320px; display: grid; justify-items: center; }
         .carimg { width: 100%; height: auto; display: block; transition: opacity .3s, filter .3s; }
         .carimg.dim { opacity: .4; filter: grayscale(.7); }
-        .carbadge { position: relative; width: fit-content; margin: 8px auto 0; display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
-        .carbadge[data-kind="wait"], .carbadge[data-kind="pvcharge"], .carbadge[data-kind="charge"] { animation: carpulse 2s ease-in-out infinite; }
-        @keyframes carpulse { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
+        .carhud { display: flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; width: 100%; margin: 8px auto 0; font-size: 12px; font-weight: 600; color: var(--primary-text-color, #161b26); }
+        .hud-icon { flex: none; width: 14px; height: 14px; color: var(--c); }
+        .hud-icon svg { width: 14px; height: 14px; display: block; }
+        .hud-title { hyphens: auto; }
+        .cs { display: none; }
+        .carwrap[data-style="badge"] .cs-badge { display: grid; position: absolute; right: 8%; bottom: 16%; width: 34px; height: 34px; border-radius: 50%; place-items: center; background: var(--card-background-color, #fff); color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 0 12px color-mix(in srgb, var(--c) 60%, transparent); }
+        .cs-badge svg { width: 18px; height: 18px; display: block; }
+        .carwrap[data-style="flow"] .cs-flow { display: block; position: relative; width: 84%; height: 16px; margin-top: 2px; }
+        .cs-flow .track { position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 3px; background: color-mix(in srgb, var(--c) 22%, transparent); }
+        .cs-flow i { position: absolute; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); opacity: 0; }
+        .carwrap[data-kind="pvcharge"] .cs-flow i, .carwrap[data-kind="charge"] .cs-flow i { animation: csflow 1.6s linear infinite; }
+        .carwrap[data-kind="wait"] .cs-flow i { animation: csflow 3.2s linear infinite; }
+        .carwrap[data-kind="plug"] .cs-flow i:first-of-type { opacity: 1; left: 50%; }
+        .cs-flow i:nth-of-type(2) { animation-delay: -.53s !important; }
+        .cs-flow i:nth-of-type(3) { animation-delay: -1.06s !important; }
+        @keyframes csflow { from { left: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { left: 100%; opacity: 0; } }
+        .carwrap[data-style="diagram"] .cs-diagram { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 84%; margin-top: 4px; }
+        .cs-diagram .node { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(127, 127, 127, .12); color: var(--sub, #6b7280); }
+        .cs-diagram .node svg { width: 20px; height: 20px; display: block; }
+        .carwrap[data-kind] .cs-diagram .node.car { background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+        .carwrap[data-kind="pvcharge"] .cs-diagram .node.sun, .carwrap[data-kind="wait"] .cs-diagram .node.sun { background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+        .carwrap[data-kind="charge"] .cs-diagram .node.wb, .carwrap[data-kind="pvcharge"] .cs-diagram .node.wb, .carwrap[data-kind="plug"] .cs-diagram .node.wb { background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+        .cs-diagram .link { flex: 1; position: relative; height: 2px; border-radius: 2px; background: rgba(127, 127, 127, .25); overflow: hidden; }
+        .cs-diagram .link i { position: absolute; top: -2px; width: 6px; height: 6px; border-radius: 50%; background: var(--c); opacity: 0; }
+        .carwrap[data-kind="pvcharge"] .cs-diagram .link i, .carwrap[data-kind="charge"] .cs-diagram .link i { opacity: 1; animation: csdia 1.4s linear infinite; }
+        .cs-diagram .link i:nth-of-type(1) { animation-delay: -.7s; }
+        @keyframes csdia { from { left: -10%; } to { left: 110%; } }
+        .carwrap[data-style="glow"] .carimg { filter: drop-shadow(0 6px 12px color-mix(in srgb, var(--c) 45%, transparent)); }
+        @keyframes carpulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
         .carname { font-size: 12px; color: var(--sub); }
         .msg { color: var(--sub); font-size: 11px; }
         .mode-btn { cursor: pointer; }
@@ -521,9 +546,18 @@ class FroniusCardByLutarym extends HTMLElement {
         <div class="device">${shape}</div>
         <div class="panel">
           <div class="carbox" id="carBox" hidden>
-            <div class="carwrap">
+            <div class="carwrap" id="carWrap" data-style="flow">
               <img class="carimg" id="carImg" alt="">
-              <div class="carbadge" id="carBadge" hidden></div>
+              <div class="cs cs-badge" id="csBadge"></div>
+              <div class="cs cs-flow"><span class="track"></span><i></i><i></i><i></i></div>
+              <div class="cs cs-diagram">
+                <span class="node sun"><svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="3.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M0 -6.5 V-8.5 M0 6.5 V8.5 M-6.5 0 H-8.5 M6.5 0 H8.5 M-4.6 -4.6 L-6 -6 M4.6 4.6 L6 6 M-4.6 4.6 L-6 6 M4.6 -4.6 L6 -6"/></g></svg></span>
+                <span class="link"><i></i></span>
+                <span class="node wb"><svg viewBox="-10 -10 20 20" aria-hidden="true"><rect x="-4.5" y="-7" width="9" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M-1.5 -2.5 L0.5 0.5 H-0.5 L1.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>
+                <span class="link"><i></i></span>
+                <span class="node car"><svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="M-8 2 L-6 -3 H6 L8 2 V5 H-8 Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="-4.5" cy="5.5" r="1.4" fill="currentColor"/><circle cx="4.5" cy="5.5" r="1.4" fill="currentColor"/></svg></span>
+              </div>
+              <div class="carhud" id="carBadge" hidden></div>
             </div>
             <div class="carname" id="carName"></div>
           </div>
@@ -565,6 +599,7 @@ class FroniusCardByLutarym extends HTMLElement {
       controlsBox: $('controlsBox'), amp: $('amp'), ampOut: $('ampOut'),
       modeRow: $('modeRow'), modes: $('modes'), discoverMsg: $('discoverMsg'), disp: $('disp'),
       carBox: $('carBox'), carImg: $('carImg'), carBadge: $('carBadge'), carName: $('carName'),
+      carWrap: $('carWrap'), csBadge: $('csBadge'),
     };
 
     this._els.amp.addEventListener('input', () => {
@@ -779,12 +814,26 @@ class FroniusCardByLutarym extends HTMLElement {
     else { kind = 'idle'; text = 'Kein Fahrzeug'; color = null; fg = null; }
 
     els.carImg.classList.toggle('dim', kind === 'idle');
+    const GLYPH = {
+      plug: '<rect x="-5" y="-3" width="10" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M-2.5 -3 V-6.5 M2.5 -3 V-6.5 M0 4 V7" stroke="currentColor" stroke-width="1.8"/>',
+      wait: '<circle r="3.2" fill="currentColor"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M0 -6 V-7.8 M0 6 V7.8 M-6 0 H-7.8 M6 0 H7.8"/></g>',
+      pvcharge: '<path d="M1.6 -7 L-4 1.4 H0 L-1.6 7 L4 -1.4 H0 Z" fill="currentColor"/>',
+      charge: '<path d="M1.6 -7 L-4 1.4 H0 L-1.6 7 L4 -1.4 H0 Z" fill="currentColor"/>',
+      done: '<path d="M-4.5 0 L-1.5 3 L4.5 -3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+      err: '<path d="M-3.5 -3.5 L3.5 3.5 M3.5 -3.5 L-3.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    };
+    const wrap = els.carWrap;
+    wrap.dataset.style = c.car_style || 'flow';
+    if (kind === 'idle') { delete wrap.dataset.kind; }
+    else { wrap.dataset.kind = kind; }
+    wrap.style.setProperty('--c', color || '#4d9bff');
+    els.csBadge.innerHTML = `<svg viewBox="-10 -10 20 20" aria-hidden="true">${GLYPH[kind] || ''}</svg>`;
     els.carBadge.hidden = kind === 'idle';
     if (kind !== 'idle') {
-      els.carBadge.dataset.kind = kind;
-      els.carBadge.style.background = color;
-      els.carBadge.style.color = fg;
-      els.carBadge.innerHTML = `<svg viewBox="-12 -12 24 24" width="16" height="16" aria-hidden="true">${CAR_GLYPH[kind] || ''}</svg><span>${escapeHtml(text)}</span>`;
+      els.carBadge.title = text;
+      els.carBadge.innerHTML = `
+        <span class="hud-icon"><svg viewBox="-10 -10 20 20" aria-hidden="true">${GLYPH[kind] || ''}</svg></span>
+        <span class="hud-title" lang="de">${escapeHtml(text)}</span>`;
     }
   }
 

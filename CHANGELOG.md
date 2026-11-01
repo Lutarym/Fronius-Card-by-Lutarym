@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.8.0
+
+- Neu: Vier grafische Darstellungen des Ladestatus am Fahrzeugfoto, im Editor unter „Darstellung des Ladestatus“ wählbar. `flow`: Punkte laufen zum Auto, wenn Strom fließt. `badge`: Symbol am Foto. `diagram`: Sonne, Wallbox und Auto mit leuchtendem Strompfad. `glow`: weicher Schein am Foto in der Statusfarbe.
+- Geändert: Unter dem Foto steht nur noch der Hauptstatus als kleine Zeile mit Symbol.
+
+## 0.7.1
+
+- Geändert: Die Statuskarte unter dem Foto zeigt nur noch den Hauptstatus, zum Beispiel „Lädt“ oder „Wartet auf PV-Überschuss“, mit einem Symbol in der Statusfarbe. Modus und Kennzahlen sind entfernt.
+
+## 0.7.0
+
+- Geändert: Der Fahrzeugstatus unter dem Foto ist eine Statuskarte. Oben stehen „Fahrzeug“ und der Lademodus, darunter der Status im Klartext. Zwei Kennzahlen zeigen die aktuelle Leistung in kW und die Energie seit Anstecken in kWh. Die linke Kante hat die Statusfarbe.
+
+## 0.6.1
+
+- Geändert: Das Statusfeld unter dem Foto ist heller und kleiner. Es hat keine dunkle Fläche und keinen Leuchteffekt mehr. Das Symbol im Kreis, der Klartext und der Lademodus bleiben.
+
+## 0.6.0
+
+- Geändert: Der Fahrzeugstatus unter dem Foto ist ein eigenes Statusfeld in dunkler Optik. Links zeigt ein Kreis mit Symbol den Zustand: gestrichelt beim Warten, ein rotierender Bogen beim Laden, ein Haken bei abgeschlossener Ladung und ein Kreuz bei Fehler. Rechts stehen der Status im Klartext und der Lademodus (zum Beispiel „Modus Eco“).
+
+## 0.5.9
+
+- Geändert: Unter dem Fahrzeugfoto steht jetzt der Status im Klartext, zum Beispiel „Lädt mit PV-Überschuss“. Er sitzt zwischen zwei leuchtenden Linien in der Statusfarbe. Die Linien pulsieren beim Laden und Warten.
+
+## 0.5.8
+
+- Geändert: Der Fahrzeugstatus ist keine Pille mehr, sondern eine schmale LED-Leiste unter dem Fahrzeugfoto in der Statusfarbe. Sie leuchtet weich und pulsiert beim Laden und Warten. Der Statustext steht weiter in der Kartenkopfzeile und als Hinweis beim Überfahren.
+
+## 0.5.7
+
+- Geändert: Das Statusabzeichen ist ruhiger gestaltet. Es ist ein schlichtes Feld mit einem kleinen leuchtenden Punkt in der Statusfarbe, passend zu den LEDs der Wallbox. Der Text bricht nicht mehr um.
+
+## 0.5.6
+
+- Geändert: Das Statusabzeichen unter dem Fahrzeugfoto ist zurückhaltender. Kleineres Symbol (12 px), nur leichte Tönung statt Vollfläche, dünner Rand.
+
 ## 0.5.5
 
 - Neu: Demo-Modus („Demo-Modus (alles simuliert)“ im Editor). Die Karte braucht dann keine Integration. Zustände, Werte, Chip, Lademodus, Regler und Fahrzeugfoto wechseln alle 14 Sekunden. Tasten und Regler funktionieren lokal in der Simulation.

@@ -2,7 +2,7 @@
 
 Lovelace-Karte für den Fronius Wattpilot. Sie zeigt das Gehäuse mit animiertem LED-Ring. Zusatzinformationen wie Status, Werte, RFID-Chip und Regler sind im Editor zuschaltbar.
 
-**Version: 0.5.5** (steht im Editor unter dem Feld „Name“)
+**Version: 0.8.0** (steht im Editor unter dem Feld „Name“)
 
 Die Karte braucht die Integration **Fronius Wattpilot by Lutarym** (`fronius_wattpilot_lutarym`). Die normale Fronius-Integration unterstützt den Wattpilot nicht.
 
@@ -87,6 +87,7 @@ show_controls: true
 | `show_controls` | nein | false | Regler für Ladestrom und Lademodus anzeigen |
 | `show_car` | nein | false | Fahrzeugfoto mit Statusabzeichen anzeigen |
 | `vehicle` | nein | none | `none`, `vw-e-up` oder `byd-dolphin-surf` |
+| `car_style` | nein | flow | Darstellung des Ladestatus am Fahrzeug: `flow` (Punkte laufen zum Auto), `badge` (Symbol am Foto), `diagram` (Sonne, Wallbox, Auto), `glow` (Schein am Foto in Statusfarbe) |
 | `demo` | nein | false | Demo-Modus mit simulierten Werten |
 
 Die Karte liest das Maximum des Ladestroms aus der Entität und begrenzt es auf `max_current`. Für einen Flex Home 11 C6 bleibt `max_current` daher bei 16.
