@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0
+
+- Erste stabile Version. Enthält alle Funktionen der Reihe 0.8: grafische Wallbox mit animiertem LED-Ring, Tasten für den Lademodus, Editor mit Zusatzinformationen, Fahrzeug (VW e-up, BYD Dolphin Surf Comfort) rechts neben der Wallbox und vier wählbare Darstellungen des Ladestatus (Energiefluss, Symbol am Foto, Mini-Diagramm, Foto-Glow), Demo-Modus.
+
+## 0.8.1
+
+- Geändert: Das Fahrzeug steht rechts neben der Wallbox, inklusive Ladestatus. Auf sehr schmalen Anzeigen bleibt das Layout nebeneinander und wird nur kleiner.
+
 ## 0.8.0
 
 - Neu: Vier grafische Darstellungen des Ladestatus am Fahrzeugfoto, im Editor unter „Darstellung des Ladestatus“ wählbar. `flow`: Punkte laufen zum Auto, wenn Strom fließt. `badge`: Symbol am Foto. `diagram`: Sonne, Wallbox und Auto mit leuchtendem Strompfad. `glow`: weicher Schein am Foto in der Statusfarbe.

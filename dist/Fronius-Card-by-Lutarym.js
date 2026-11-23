@@ -1,10 +1,10 @@
 /*
  * Fronius-Card-by-Lutarym
  * Lovelace-Karte für den Fronius Wattpilot (Integration: fronius_wattpilot_lutarym)
- * Version: 0.8.0
+ * Version: 1.0.0
  * Lizenz: MIT
  */
-const CARD_VERSION = '0.8.0';
+const CARD_VERSION = '1.0.0';
 const CARD_TAG = 'fronius-card-by-lutarym';
 const INTEGRATION_DOMAIN = 'fronius_wattpilot_lutarym';
 
@@ -476,6 +476,11 @@ class FroniusCardByLutarym extends HTMLElement {
           .card:not([data-theme="light"]) { --sub: #97a2b1; --line: #262e39; --well: #1d242d; --accent: #5fd0e8; --accent-ink: #061115; }
         }
         .device { max-width: 240px; margin: 0 auto; }
+        .hero { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .hero .device { flex: 1 1 0; max-width: 240px; min-width: 0; margin: 0; }
+        .hero .carbox { flex: 1 1 0; max-width: 260px; min-width: 0; }
+        .hero .carbox[hidden] { display: none; }
+        .hero .carwrap { max-width: 100%; }
         svg { width: 100%; height: auto; display: block; overflow: visible; }
         .panel { margin-top: 12px; display: grid; gap: 10px; }
         .state { font-size: 16px; font-weight: 650; }
@@ -543,8 +548,8 @@ class FroniusCardByLutarym extends HTMLElement {
         .mode-btn.active .ring { stroke: #4d9bff; stroke-width: 1.6; }
       </style>
       <div class="card" part="card">
+        <div class="hero">
         <div class="device">${shape}</div>
-        <div class="panel">
           <div class="carbox" id="carBox" hidden>
             <div class="carwrap" id="carWrap" data-style="flow">
               <img class="carimg" id="carImg" alt="">
@@ -561,6 +566,8 @@ class FroniusCardByLutarym extends HTMLElement {
             </div>
             <div class="carname" id="carName"></div>
           </div>
+        </div>
+        <div class="panel">
           <div id="statusBox" hidden>
             <div class="state" id="state">-</div>
             <div class="sub" id="sub"></div>
