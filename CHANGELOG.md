@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- Geändert: Im Querformat stehen Fahrzeug, Status und Werte komplett rechts neben der Wallbox. Im Hochformat stehen sie untereinander.
+- Neu: Ladeprotokoll (Option „Ladeprotokoll anzeigen“). Zeigt die Gesamtenergie jeder registrierten RFID-Karte aus der Integration, sortiert nach Menge. Der aktive Chip ist hervorgehoben. Das ist eine Summe pro Karte, kein Protokoll mit Datum und Uhrzeit pro Ladung.
+
 ## 1.1.0
 
 - Neu: Ausrichtung im visuellen Editor wählbar. Querformat: Fahrzeug rechts neben der Wallbox (Standard). Hochformat: Fahrzeug unter der Wallbox.

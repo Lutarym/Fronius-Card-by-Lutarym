@@ -1,10 +1,10 @@
 /*
  * Fronius-Card-by-Lutarym
  * Lovelace-Karte für den Fronius Wattpilot (Integration: fronius_wattpilot_lutarym)
- * Version: 1.1.0
+ * Version: 1.2.0
  * Lizenz: MIT
  */
-const CARD_VERSION = '1.1.0';
+const CARD_VERSION = '1.2.0';
 const CARD_TAG = 'fronius-card-by-lutarym';
 const INTEGRATION_DOMAIN = 'fronius_wattpilot_lutarym';
 
@@ -159,6 +159,7 @@ const FIELD_LABEL = {
   show_values: 'Werte anzeigen',
   show_chip: 'RFID-Chip anzeigen',
   show_controls: 'Regler anzeigen',
+  show_log: 'Ladeprotokoll anzeigen',
   charging_current: 'Ladestrom (Entität)',
   power: 'Ladeleistung (Entität)',
   car: 'Fahrzeugstatus (Entität)',
@@ -211,6 +212,7 @@ class FroniusCardByLutarym extends HTMLElement {
       show_values: false,
       show_chip: false,
       show_controls: false,
+      show_log: false,
       show_car: false,
       vehicle: 'none',
       car_style: 'flow',
@@ -262,6 +264,7 @@ class FroniusCardByLutarym extends HTMLElement {
       session: 3.2 + (sc.charge ? phase * 4 : 0), total: 2481.7,
       activeCard: sc.charge || sc.car === 'waitcar' ? { name: 'Demo-Karte', energy: 15000 } : null,
       cardCount: 2,
+      cards: [{ name: 'VW e-up', energy: 42310 }, { name: 'BYD Dolphin Surf', energy: 18720 }],
     };
   }
 
@@ -309,6 +312,7 @@ class FroniusCardByLutarym extends HTMLElement {
             { name: 'show_chip', selector: { boolean: {} } },
             { name: 'show_car', selector: { boolean: {} } },
             { name: 'show_controls', selector: { boolean: {} } },
+            { name: 'show_log', selector: { boolean: {} } },
           ],
         },
         {
@@ -457,6 +461,7 @@ class FroniusCardByLutarym extends HTMLElement {
       session: toKwh(sessionS), total: toKwh(totalS),
       activeCard,
       cardCount: cardItems.length,
+      cards: cardItems.map((k) => ({ name: k.name, energy: Number(k.energy) || 0 })),
     };
   }
 
@@ -485,12 +490,20 @@ class FroniusCardByLutarym extends HTMLElement {
         }
         .device { max-width: 240px; margin: 0 auto; }
         .hero { display: flex; align-items: center; justify-content: center; gap: 12px; }
-        .hero .device { flex: 1 1 0; max-width: 240px; min-width: 0; margin: 0; }
-        .hero .carbox { flex: 1 1 0; max-width: 260px; min-width: 0; }
+        .hero .device { flex: 0 0 40%; max-width: 240px; min-width: 0; margin: 0; }
+        .hero .carbox { flex: none; max-width: 260px; width: 100%; }
+        .side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+        .side .val .v { font-size: 13px; white-space: nowrap; }
+        .side .val .k { white-space: normal; font-size: 10px; letter-spacing: .02em; }
+        .logbox { margin-top: 6px; font-size: 12px; }
+        .logbox h3 { margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--sub); }
+        .logrow { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); color: var(--primary-text-color, #161b26); }
+        .logrow.act { font-weight: 600; color: var(--accent); }
         .hero .carbox[hidden] { display: none; }
         .hero .carwrap { max-width: 100%; }
         .card[data-layout="portrait"] .hero { flex-direction: column; gap: 14px; }
         .card[data-layout="portrait"] .hero .device { flex: none; width: 100%; max-width: 240px; }
+        .card[data-layout="portrait"] .hero .side { flex: none; width: 100%; }
         .card[data-layout="portrait"] .hero .carbox { flex: none; width: 100%; max-width: 260px; }
         svg { width: 100%; height: auto; display: block; overflow: visible; }
         .panel { margin-top: 12px; display: grid; gap: 10px; }
@@ -561,6 +574,7 @@ class FroniusCardByLutarym extends HTMLElement {
       <div class="card" part="card">
         <div class="hero">
         <div class="device">${shape}</div>
+        <div class="side">
           <div class="carbox" id="carBox" hidden>
             <div class="carwrap" id="carWrap" data-style="flow">
               <img class="carimg" id="carImg" alt="">
@@ -577,7 +591,6 @@ class FroniusCardByLutarym extends HTMLElement {
             </div>
             <div class="carname" id="carName"></div>
           </div>
-        </div>
         <div class="panel">
           <div id="statusBox" hidden>
             <div class="state" id="state">-</div>
@@ -607,6 +620,9 @@ class FroniusCardByLutarym extends HTMLElement {
           </div>
           <div class="msg" id="discoverMsg"></div>
         </div>
+        <div class="logbox" id="logBox" hidden><h3>Ladeprotokoll (Gesamt pro RFID-Karte)</h3><div id="logRows"></div></div>
+        </div>
+        </div>
       </div>`;
 
     const $ = (id) => this.shadowRoot.getElementById(id);
@@ -618,6 +634,7 @@ class FroniusCardByLutarym extends HTMLElement {
       modeRow: $('modeRow'), modes: $('modes'), discoverMsg: $('discoverMsg'), disp: $('disp'),
       carBox: $('carBox'), carImg: $('carImg'), carBadge: $('carBadge'), carName: $('carName'),
       carWrap: $('carWrap'), csBadge: $('csBadge'),
+      logBox: $('logBox'), logRows: $('logRows'),
     };
 
     this._els.amp.addEventListener('input', () => {
@@ -743,6 +760,14 @@ class FroniusCardByLutarym extends HTMLElement {
     els.chipBox.hidden = !c.show_chip;
     els.controlsBox.hidden = !c.show_controls;
     this._updateCar(r);
+    const cardList = Array.isArray(r.cards) ? r.cards : [];
+    els.logBox.hidden = !(c.show_log && cardList.length);
+    if (!els.logBox.hidden) {
+      const activeName = r.activeCard ? r.activeCard.name : null;
+      els.logRows.innerHTML = [...cardList].sort((a, b) => b.energy - a.energy).map((k) =>
+        `<div class="logrow${activeName !== null && k.name === activeName ? ' act' : ''}"><span>${escapeHtml(k.name || 'ohne Namen')}</span><span>${fmt(k.energy / 1000, 2)} kWh</span></div>`
+      ).join('');
+    }
 
     // Status: Fehler hat Vorrang, sonst der Fahrzeugstatus
     if (r.hasError) els.state.textContent = 'Fehler';
