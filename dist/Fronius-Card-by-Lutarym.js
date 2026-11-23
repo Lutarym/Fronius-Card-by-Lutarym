@@ -1,10 +1,10 @@
 /*
  * Fronius-Card-by-Lutarym
  * Lovelace-Karte für den Fronius Wattpilot (Integration: fronius_wattpilot_lutarym)
- * Version: 1.0.0
+ * Version: 1.1.0
  * Lizenz: MIT
  */
-const CARD_VERSION = '1.0.0';
+const CARD_VERSION = '1.1.0';
 const CARD_TAG = 'fronius-card-by-lutarym';
 const INTEGRATION_DOMAIN = 'fronius_wattpilot_lutarym';
 
@@ -75,6 +75,10 @@ const LED_SOURCE_OPTIONS = [
 ];
 
 // Fahrzeuge: Fotos (freigestellt, transparenter Hintergrund)
+const LAYOUT_OPTIONS = [
+  { value: 'landscape', label: 'Querformat (Fahrzeug rechts neben der Wallbox)' },
+  { value: 'portrait', label: 'Hochformat (Fahrzeug unter der Wallbox)' },
+];
 const CAR_STYLE_OPTIONS = [
   { value: 'flow', label: 'Energiefluss (Punkte laufen zum Auto)' },
   { value: 'badge', label: 'Symbol am Foto' },
@@ -145,6 +149,7 @@ const FIELD_LABEL = {
   demo: 'Demo-Modus (alles simuliert)',
   vehicle: 'Fahrzeug',
   car_style: 'Darstellung des Ladestatus',
+  layout: 'Ausrichtung',
   show_car: 'Fahrzeug anzeigen',
   model: 'Modell',
   max_current: 'Höchstwert Ladestrom (A)',
@@ -209,6 +214,7 @@ class FroniusCardByLutarym extends HTMLElement {
       show_car: false,
       vehicle: 'none',
       car_style: 'flow',
+      layout: 'landscape',
       demo: false,
     }, config);
     if (!MODELS[this._config.model]) {
@@ -216,6 +222,7 @@ class FroniusCardByLutarym extends HTMLElement {
     }
     this._built = false;
     this._build();
+    this.shadowRoot.querySelector('.card').dataset.layout = this._config.layout === 'portrait' ? 'portrait' : 'landscape';
     this._update();
     this._syncDemoTimer();
   }
@@ -288,6 +295,7 @@ class FroniusCardByLutarym extends HTMLElement {
         { name: 'led_source', selector: { select: { options: LED_SOURCE_OPTIONS } } },
         { name: 'vehicle', selector: { select: { options: VEHICLE_OPTIONS } } },
         { name: 'car_style', selector: { select: { options: CAR_STYLE_OPTIONS } } },
+        { name: 'layout', selector: { select: { options: LAYOUT_OPTIONS } } },
         { name: 'demo', selector: { boolean: {} } },
         { name: 'serial', selector: { text: {} } },
         {
@@ -481,6 +489,9 @@ class FroniusCardByLutarym extends HTMLElement {
         .hero .carbox { flex: 1 1 0; max-width: 260px; min-width: 0; }
         .hero .carbox[hidden] { display: none; }
         .hero .carwrap { max-width: 100%; }
+        .card[data-layout="portrait"] .hero { flex-direction: column; gap: 14px; }
+        .card[data-layout="portrait"] .hero .device { flex: none; width: 100%; max-width: 240px; }
+        .card[data-layout="portrait"] .hero .carbox { flex: none; width: 100%; max-width: 260px; }
         svg { width: 100%; height: auto; display: block; overflow: visible; }
         .panel { margin-top: 12px; display: grid; gap: 10px; }
         .state { font-size: 16px; font-weight: 650; }

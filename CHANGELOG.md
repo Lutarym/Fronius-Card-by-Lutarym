@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+
+- Neu: Ausrichtung im visuellen Editor wählbar. Querformat: Fahrzeug rechts neben der Wallbox (Standard). Hochformat: Fahrzeug unter der Wallbox.
+
 ## 1.0.0
 
 - Erste stabile Version. Enthält alle Funktionen der Reihe 0.8: grafische Wallbox mit animiertem LED-Ring, Tasten für den Lademodus, Editor mit Zusatzinformationen, Fahrzeug (VW e-up, BYD Dolphin Surf Comfort) rechts neben der Wallbox und vier wählbare Darstellungen des Ladestatus (Energiefluss, Symbol am Foto, Mini-Diagramm, Foto-Glow), Demo-Modus.
