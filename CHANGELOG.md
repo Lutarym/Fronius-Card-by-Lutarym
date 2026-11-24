@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0
+
+- Neu: Jeder RFID-Chip aus der Integration ist automatisch ein Fahrzeug, mit dem Chipnamen als Namen. Der aktive Chip wird ohne Einrichtung erkannt und angezeigt.
+- Neu: Fahrzeuge ohne passendes Foto bekommen ein Fahrzeug-Symbol in der Farbe des Ladestatus.
+- Neu: Eigenes Foto je Chip im Editor (`chip_1_image` bis `chip_10_image`), zum Beispiel `/local/autos/zoe.png`. Lässt es sich nicht laden, erscheint das Symbol.
+- Geändert: Die Auswahl je Chip legt jetzt das Bild fest (Automatisch, Foto VW e-up, Foto BYD Dolphin Surf Comfort, Symbol). Der Editor-Abschnitt heißt „Fahrzeuge (aus den RFID-Chips erkannt)“ und erscheint, sobald Chips gelesen wurden.
+- Geändert: Das Feld „Fahrzeug“ heißt jetzt „Fahrzeug ohne aktiven Chip“.
+- Demo-Modus: drei Chips, einer davon ohne Foto.
+
 ## 1.4.0
 
 - Neu: Die Karte erkennt das Fahrzeug automatisch am Chipnamen aus der Wattpilot-App („e-up“, „VW“ oder „Dolphin“, „BYD“). Die Auswahl im Editor hat Vorrang. „Automatisch“ ist der Standard.

@@ -2,7 +2,7 @@
 
 Lovelace-Karte für den Fronius Wattpilot. Sie zeigt das Gehäuse mit animiertem LED-Ring. Zusatzinformationen wie Status, Werte, RFID-Chip und Regler sind im Editor zuschaltbar.
 
-**Version: 1.4.0** (steht im Editor unter dem Feld „Name“)
+**Version: 1.5.0** (steht im Editor unter dem Feld „Name“)
 
 Die Karte braucht die Integration **Fronius Wattpilot by Lutarym** (`fronius_wattpilot_lutarym`). Die normale Fronius-Integration unterstützt den Wattpilot nicht.
 
@@ -20,7 +20,7 @@ Getestet ist der Code mit einem simulierten Home-Assistant-Objekt. Der visuelle 
   - Werte: Ladestrom, Leistung, Energie seit Anstecken, Gesamtenergie
   - Aktiver RFID-Chip mit Name und Energie
   - Regler für Ladestrom und Lademodus (schreiben auf das Gerät)
-  - Fahrzeugfoto (VW e-up oder BYD Dolphin Surf Comfort) mit Statusabzeichen
+  - Fahrzeuge automatisch aus den RFID-Chips der Integration, mit Foto oder Symbol und Ladestatus
 
 ## Installation
 
@@ -86,11 +86,12 @@ show_controls: true
 | `show_chip` | nein | false | RFID-Chip anzeigen |
 | `show_controls` | nein | false | Regler für Ladestrom und Lademodus anzeigen |
 | `show_car` | nein | false | Fahrzeugfoto mit Statusabzeichen anzeigen |
-| `vehicle` | nein | none | `none`, `vw-e-up` oder `byd-dolphin-surf` |
+| `vehicle` | nein | none | Fahrzeug, das ohne aktiven Chip gezeigt wird: `none`, `vw-e-up` oder `byd-dolphin-surf` |
 | `car_style` | nein | flow | Darstellung des Ladestatus am Fahrzeug: `flow` (Punkte laufen zum Auto), `badge` (Symbol am Foto), `diagram` (Sonne, Wallbox, Auto), `glow` (Schein am Foto in Statusfarbe) |
 | `layout` | nein | landscape | Ausrichtung der Karte: `landscape` (Wallbox links, Fahrzeug, Status und Werte rechts), `portrait` (alles untereinander). Im Editor unter „Ausrichtung“ wählbar |
 | `show_log` | nein | false | Ladeprotokoll anzeigen: Gesamtenergie pro registrierter RFID-Karte aus der Integration, der aktive Chip ist hervorgehoben |
-| `chip_1` bis `chip_10` | nein | auto | Fahrzeug für den Chip auf diesem Platz im Wattpilot: `auto` (aus dem Chipnamen), `none`, `vw-e-up` oder `byd-dolphin-surf` |
+| `chip_1` bis `chip_10` | nein | auto | Bild für den Chip auf diesem Platz im Wattpilot: `auto` (Foto am Chipnamen, sonst Symbol), `vw-e-up`, `byd-dolphin-surf` oder `icon` (Symbol) |
+| `chip_1_image` bis `chip_10_image` | nein | leer | Eigenes Foto für diesen Chip, z. B. `/local/autos/zoe.png`. Hat Vorrang |
 | `demo` | nein | false | Demo-Modus mit simulierten Werten |
 
 Die Karte liest das Maximum des Ladestroms aus der Entität und begrenzt es auf `max_current`. Für einen Flex Home 11 C6 bleibt `max_current` daher bei 16.
@@ -153,24 +154,30 @@ Die Chip-Entitäten legt die Integration erst ab Version 2.9.0 auch bei Geräten
 
 Ob die Entität auch dann einen Wert zeigt, wenn ein Chip nur vorgehalten wird und kein Ladevorgang läuft, habe ich nicht am Gerät geprüft.
 
-## Chips den Fahrzeugen zuordnen
+## Fahrzeuge aus den RFID-Chips
 
-Die Karte erkennt automatisch, welcher Chip vorgehalten wurde. Das Fahrzeug dazu ergibt sich so:
+Die Karte braucht dafür keine Einrichtung. Sie liest alle Chips aus der Integration und behandelt jeden Chip als ein Fahrzeug. Der Fahrzeugname ist der Chipname aus der Wattpilot-App. Wird ein Chip vorgehalten, erkennt die Karte ihn automatisch und zeigt dieses Fahrzeug.
 
-1. Ist im Editor unter „RFID-Chips den Fahrzeugen zuordnen“ für den Chip ein Fahrzeug gewählt, gilt dieses.
-2. Steht dort „Automatisch“ (Standard), erkennt die Karte das Fahrzeug am Chipnamen aus der Wattpilot-App:
-   - „e-up“, „eup“, „VW“ oder „Volkswagen“ im Namen: VW e-up
-   - „Dolphin“ oder „BYD“ im Namen: BYD Dolphin Surf Comfort
-3. Passt keins oder passen beide, hat der Chip kein Fahrzeug. Die Karte zeigt dann das Standardfahrzeug aus dem Feld „Fahrzeug“ und den Hinweis „kein Fahrzeug zugeordnet“.
+Das Bild des Fahrzeugs ergibt sich so:
 
-Im Editor stehen nur die Chips, die die Integration meldet, mit ihrem Namen, zum Beispiel „Chip 1: e-up“. Darunter steht, welches Fahrzeug „Automatisch“ erkennen würde. Solange die Karte noch keine Chips gelesen hat, stehen dort alle zehn Plätze.
+1. Ist im Editor für den Chip ein eigenes Foto angegeben, zeigt die Karte dieses. Fotos legst du zum Beispiel unter `/config/www/autos/` ab und gibst sie als `/local/autos/zoe.png` an.
+2. Sonst zeigt sie das im Editor gewählte Foto, VW e-up oder BYD Dolphin Surf Comfort.
+3. Steht dort „Automatisch“ (Standard), erkennt die Karte das Foto am Chipnamen:
+   - „e-up“, „eup“, „VW“ oder „Volkswagen“ im Namen: Foto VW e-up
+   - „Dolphin“ oder „BYD“ im Namen: Foto BYD Dolphin Surf Comfort
+4. Passt kein Foto, zeigt die Karte ein Fahrzeug-Symbol. Es nimmt die Farbe des Ladestatus an.
 
-Wird ein zugeordneter Chip vorgehalten, gilt:
+Lässt sich ein eigenes Foto nicht laden, zum Beispiel wegen eines falschen Pfads, zeigt die Karte das Symbol und schreibt einen Hinweis in die Browser-Konsole.
 
-- Das Fahrzeugfoto wechselt auf das Fahrzeug dieses Chips.
-- Über den Werten steht „Werte für <Fahrzeug>“ mit dem Chipnamen. Ladestrom, Leistung und Energie seit Anstecken gehören dann zu diesem Fahrzeug.
+Im Editor steht unter „Fahrzeuge (aus den RFID-Chips erkannt)“ jeder Chip mit seinem Namen, jeweils mit „Bild“ und „eigenes Foto“. Darunter steht, was „Automatisch“ zeigen würde. Der Abschnitt erscheint, sobald die Karte Chips gelesen hat.
+
+Ist kein Chip aktiv, zeigt die Karte das Fahrzeug aus dem Feld „Fahrzeug ohne aktiven Chip“. Steht dort „Keins“, ist der Fahrzeugbereich bis zum nächsten Chip ausgeblendet.
+
+Wird ein Chip vorgehalten, gilt außerdem:
+
+- Über den Werten steht „Werte für <Fahrzeug>“. Ladestrom, Leistung und Energie seit Anstecken gehören dann zu diesem Fahrzeug.
 - Zusätzlich erscheint „Gesamt mit diesem Chip“.
-- Das Ladeprotokoll fasst die Energie aller Chips eines Fahrzeugs zusammen. Chips ohne Fahrzeug stehen einzeln darin. Hat ein Fahrzeug genau einen Chip, steht dort auch dessen letzte Ladung aus „<Chipname> Energie letzte Ladung“.
+- Das Ladeprotokoll zeigt jedes Fahrzeug mit seiner Energie. Chips mit demselben Foto-Modell werden zusammengefasst. Hat ein Fahrzeug genau einen Chip, steht dort auch dessen letzte Ladung aus „<Chipname> Energie letzte Ladung“.
 
 Als bekannt gilt ein Chip-Platz, wenn er einen Namen oder geladene Energie hat. Die Energie pro Chip ist die Summe, die der Wattpilot für diesen Chip speichert, kein Protokoll einzelner Ladungen.
 
