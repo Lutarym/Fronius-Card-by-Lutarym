@@ -2,7 +2,7 @@
 
 Lovelace-Karte für den Fronius Wattpilot. Sie zeigt das Gehäuse mit animiertem LED-Ring. Zusatzinformationen wie Status, Werte, RFID-Chip und Regler sind im Editor zuschaltbar.
 
-**Version: 0.8.0** (steht im Editor unter dem Feld „Name“)
+**Version: 1.4.0** (steht im Editor unter dem Feld „Name“)
 
 Die Karte braucht die Integration **Fronius Wattpilot by Lutarym** (`fronius_wattpilot_lutarym`). Die normale Fronius-Integration unterstützt den Wattpilot nicht.
 
@@ -88,6 +88,9 @@ show_controls: true
 | `show_car` | nein | false | Fahrzeugfoto mit Statusabzeichen anzeigen |
 | `vehicle` | nein | none | `none`, `vw-e-up` oder `byd-dolphin-surf` |
 | `car_style` | nein | flow | Darstellung des Ladestatus am Fahrzeug: `flow` (Punkte laufen zum Auto), `badge` (Symbol am Foto), `diagram` (Sonne, Wallbox, Auto), `glow` (Schein am Foto in Statusfarbe) |
+| `layout` | nein | landscape | Ausrichtung der Karte: `landscape` (Wallbox links, Fahrzeug, Status und Werte rechts), `portrait` (alles untereinander). Im Editor unter „Ausrichtung“ wählbar |
+| `show_log` | nein | false | Ladeprotokoll anzeigen: Gesamtenergie pro registrierter RFID-Karte aus der Integration, der aktive Chip ist hervorgehoben |
+| `chip_1` bis `chip_10` | nein | auto | Fahrzeug für den Chip auf diesem Platz im Wattpilot: `auto` (aus dem Chipnamen), `none`, `vw-e-up` oder `byd-dolphin-surf` |
 | `demo` | nein | false | Demo-Modus mit simulierten Werten |
 
 Die Karte liest das Maximum des Ladestroms aus der Entität und begrenzt es auf `max_current`. Für einen Flex Home 11 C6 bleibt `max_current` daher bei 16.
@@ -139,9 +142,37 @@ Diese Werte stehen im Code als Konstanten am Anfang der Datei und lassen sich do
 
 ## Chip-Anzeige
 
-Die Karte zeigt den Chip, dessen Nummer in der Entität „Aktive Transaktion“ steht. Wert 0 bedeutet kein Chip. Wert 1 entspricht dem ersten Eintrag der Kartenliste, 2 dem zweiten, und so weiter. Name und Energie kommen aus der Liste „Registrierte RFID-Karten“.
+Die Karte liest die Chips aus den Entitäten der Integration Fronius Wattpilot by Lutarym:
+
+- Chipnamen und Energie aus „<Chipname> Energie gesamt“, je Chip eine Entität.
+- Den vorgehaltenen Chip aus „Aktive RFID-Karte“.
+
+Ältere Fassungen der Integration haben diese Entitäten nicht. Dann liest die Karte „Registrierte RFID-Karten“ und „Aktive Transaktion“. Wert 0 bedeutet dort kein Chip, 1 der erste Chip, 2 der zweite.
+
+Die Chip-Entitäten legt die Integration erst ab Version 2.9.0 auch bei Geräten an, die ihre Chips einzeln melden (Schlüssel `c0n` und folgende statt der Liste `cards`).
 
 Ob die Entität auch dann einen Wert zeigt, wenn ein Chip nur vorgehalten wird und kein Ladevorgang läuft, habe ich nicht am Gerät geprüft.
+
+## Chips den Fahrzeugen zuordnen
+
+Die Karte erkennt automatisch, welcher Chip vorgehalten wurde. Das Fahrzeug dazu ergibt sich so:
+
+1. Ist im Editor unter „RFID-Chips den Fahrzeugen zuordnen“ für den Chip ein Fahrzeug gewählt, gilt dieses.
+2. Steht dort „Automatisch“ (Standard), erkennt die Karte das Fahrzeug am Chipnamen aus der Wattpilot-App:
+   - „e-up“, „eup“, „VW“ oder „Volkswagen“ im Namen: VW e-up
+   - „Dolphin“ oder „BYD“ im Namen: BYD Dolphin Surf Comfort
+3. Passt keins oder passen beide, hat der Chip kein Fahrzeug. Die Karte zeigt dann das Standardfahrzeug aus dem Feld „Fahrzeug“ und den Hinweis „kein Fahrzeug zugeordnet“.
+
+Im Editor stehen nur die Chips, die die Integration meldet, mit ihrem Namen, zum Beispiel „Chip 1: e-up“. Darunter steht, welches Fahrzeug „Automatisch“ erkennen würde. Solange die Karte noch keine Chips gelesen hat, stehen dort alle zehn Plätze.
+
+Wird ein zugeordneter Chip vorgehalten, gilt:
+
+- Das Fahrzeugfoto wechselt auf das Fahrzeug dieses Chips.
+- Über den Werten steht „Werte für <Fahrzeug>“ mit dem Chipnamen. Ladestrom, Leistung und Energie seit Anstecken gehören dann zu diesem Fahrzeug.
+- Zusätzlich erscheint „Gesamt mit diesem Chip“.
+- Das Ladeprotokoll fasst die Energie aller Chips eines Fahrzeugs zusammen. Chips ohne Fahrzeug stehen einzeln darin. Hat ein Fahrzeug genau einen Chip, steht dort auch dessen letzte Ladung aus „<Chipname> Energie letzte Ladung“.
+
+Als bekannt gilt ein Chip-Platz, wenn er einen Namen oder geladene Energie hat. Die Energie pro Chip ist die Summe, die der Wattpilot für diesen Chip speichert, kein Protokoll einzelner Ladungen.
 
 ## Bekannte Grenzen
 
@@ -180,7 +211,12 @@ Der Ladestrom-Regler und der Lademodus schreiben direkt auf das Gerät. Teste di
 | Fehler | `err` | Sensor |
 | Lademodus | `lmo` | Auswahl |
 | Aktive Transaktion (Chip-Nummer) | `trx` | Zahl |
-| Registrierte RFID-Karten | `cards` | Sensor |
+| Registrierte RFID-Karten (nur ältere Firmware) | `cards` | Sensor |
+| Aktive RFID-Karte | `active_card` | Sensor |
+| „<Chipname> Energie gesamt“ je Chip | `cards_0_energy` bis `cards_9_energy` | Sensor, Wh |
+| „<Chipname> Energie letzte Ladung“ je Chip | `cards_0_session` bis `cards_9_session` | Sensor, Wh |
+
+Für die Anzeige „Lädt mit PV-Überschuss“ braucht die Karte den „Ladegrund“ (`modelStatus`). Diese Entität ist in der Integration ab Werk deaktiviert. Ohne sie zeigt die Karte beim Laden nur „Lädt“.
 
 Die Zuordnung der Energie seit Anstecken zu `wh` habe ich aus den Namen der Integration abgeleitet. Bitte prüfe das in deiner Instanz.
 

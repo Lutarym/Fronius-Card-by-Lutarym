@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.4.0
+
+- Neu: Die Karte erkennt das Fahrzeug automatisch am Chipnamen aus der Wattpilot-App („e-up“, „VW“ oder „Dolphin“, „BYD“). Die Auswahl im Editor hat Vorrang. „Automatisch“ ist der Standard.
+- Neu: Der vorgehaltene Chip wird aus „Aktive RFID-Karte“ gelesen, ersatzweise aus den Chip-Entitäten und zuletzt aus „Aktive Transaktion“.
+- Neu: Im Editor stehen nur die Chips, die die Integration meldet, mit Namen und dem automatisch erkannten Fahrzeug.
+- Neu: Das Ladeprotokoll zeigt die letzte Ladung des Chips, wenn ein Fahrzeug genau einen Chip hat.
+- Angepasst an Fronius Wattpilot by Lutarym 2.9.0.
+
+## 1.3.1
+
+- Behoben: Die Chips werden jetzt aus den Chip-Entitäten der Integration gelesen („<Chipname> Energie gesamt“ und „Aktive RFID-Karte“). Bisher las die Karte nur „Registrierte RFID-Karten“, das es bei neuerer Wattpilot-Firmware nicht gibt. Ältere Fassungen der Integration funktionieren weiter.
+
+## 1.3.0
+
+- Neu: RFID-Chips den Fahrzeugen zuordnen. Im Editor gibt es zehn Chip-Plätze mit den Namen aus dem Wattpilot. Beim Vorhalten eines zugeordneten Chips wechselt das Fahrzeugfoto, die Werte werden diesem Fahrzeug zugeordnet und „Gesamt mit diesem Chip“ erscheint.
+- Geändert: Das Ladeprotokoll zeigt die Energie pro Fahrzeug (Summe seiner Chips). Chips ohne Fahrzeug stehen einzeln darin.
+- Demo-Modus: zwei Demo-Chips, ohne eigene Zuordnung gehört Chip 1 zum VW e-up und Chip 2 zum BYD Dolphin Surf.
+
+## 1.2.0
+
+- Geändert: Im Querformat stehen Fahrzeug, Status und Werte komplett rechts neben der Wallbox. Im Hochformat stehen sie untereinander.
+- Neu: Ladeprotokoll (Option „Ladeprotokoll anzeigen“). Zeigt die Gesamtenergie jeder registrierten RFID-Karte aus der Integration, sortiert nach Menge. Der aktive Chip ist hervorgehoben. Das ist eine Summe pro Karte, kein Protokoll mit Datum und Uhrzeit pro Ladung.
+
+## 1.1.0
+
+- Neu: Ausrichtung im visuellen Editor wählbar. Querformat: Fahrzeug rechts neben der Wallbox (Standard). Hochformat: Fahrzeug unter der Wallbox.
+
+## 1.0.0
+
+- Erste stabile Version. Enthält alle Funktionen der Reihe 0.8: grafische Wallbox mit animiertem LED-Ring, Tasten für den Lademodus, Editor mit Zusatzinformationen, Fahrzeug (VW e-up, BYD Dolphin Surf Comfort) rechts neben der Wallbox und vier wählbare Darstellungen des Ladestatus (Energiefluss, Symbol am Foto, Mini-Diagramm, Foto-Glow), Demo-Modus.
+
+## 0.8.1
+
+- Geändert: Das Fahrzeug steht rechts neben der Wallbox, inklusive Ladestatus. Auf sehr schmalen Anzeigen bleibt das Layout nebeneinander und wird nur kleiner.
+
 ## 0.8.0
 
 - Neu: Vier grafische Darstellungen des Ladestatus am Fahrzeugfoto, im Editor unter „Darstellung des Ladestatus“ wählbar. `flow`: Punkte laufen zum Auto, wenn Strom fließt. `badge`: Symbol am Foto. `diagram`: Sonne, Wallbox und Auto mit leuchtendem Strompfad. `glow`: weicher Schein am Foto in der Statusfarbe.
